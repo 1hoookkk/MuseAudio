@@ -1,10 +1,9 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
-
-#if (MSVC)
-#include "ipps.h"
-#endif
+#include <zplane/ZPlaneFilter.h>
+#include <zplane/EMUAuthenticTables.h>
+#include "../dsp/ZPlaneShapes.hpp"
 
 class PluginProcessor : public juce::AudioProcessor
 {
@@ -38,6 +37,25 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    // Access for UI
+    juce::AudioProcessorValueTreeState& getState() { return state_; }
+
 private:
+    // Parameter state (JUCE 8 best practice: APVTS with cached raw pointers)
+    juce::AudioProcessorValueTreeState state_;
+
+    // Cached parameter pointers for RT-safe audio thread access
+    std::atomic<float>* pairParam_ = nullptr;
+    std::atomic<float>* morphParam_ = nullptr;
+    std::atomic<float>* intensityParam_ = nullptr;
+    std::atomic<float>* mixParam_ = nullptr;
+    std::atomic<float>* autoMakeupParam_ = nullptr;
+
+    // DSP engine (validated EngineField implementation)
+    emu::ZPlaneFilter filter_;
+    ZPlaneShapes shapes_;
+
+    int lastPairIndex_ = -1;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginProcessor)
 };
