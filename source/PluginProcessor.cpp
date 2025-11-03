@@ -2,16 +2,59 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-PluginProcessor::PluginProcessor()
-     : AudioProcessor (BusesProperties()
-                     #if ! JucePlugin_IsMidiEffect
-                      #if ! JucePlugin_IsSynth
-                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-                      #endif
-                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-                     #endif
-                       )
+static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
 {
+    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+    layout.add(std::make_unique<juce::AudioParameterInt>(
+        "pair",
+        "Shape Pair",
+        0, 3, 0));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "morph",
+        "Morph",
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
+        0.5f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "intensity",
+        "Intensity",
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
+        0.5f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        "mix",
+        "Mix",
+        juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
+        1.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterBool>(
+        "autoMakeup",
+        "Auto Makeup",
+        true));
+
+    return layout;
+}
+
+//==============================================================================
+PluginProcessor::PluginProcessor()
+    : AudioProcessor(BusesProperties()
+                    #if ! JucePlugin_IsMidiEffect
+                     #if ! JucePlugin_IsSynth
+                      .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
+                     #endif
+                      .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+                    #endif
+                      )
+    , state_(*this, nullptr, "Parameters", createParameterLayout())
+{
+    // Cache parameter pointers for RT-safe audio thread access (JUCE 8 best practice)
+    pairParam_ = state_.getRawParameterValue("pair");
+    morphParam_ = state_.getRawParameterValue("morph");
+    intensityParam_ = state_.getRawParameterValue("intensity");
+    mixParam_ = state_.getRawParameterValue("mix");
+    autoMakeupParam_ = state_.getRawParameterValue("autoMakeup");
 }
 
 PluginProcessor::~PluginProcessor()
@@ -58,8 +101,7 @@ double PluginProcessor::getTailLengthSeconds() const
 
 int PluginProcessor::getNumPrograms()
 {
-    return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
-                // so this should be at least 1, even if you're not really implementing programs.
+    return 1;
 }
 
 int PluginProcessor::getCurrentProgram()
@@ -86,15 +128,29 @@ void PluginProcessor::changeProgramName (int index, const juce::String& newName)
 //==============================================================================
 void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
-    juce::ignoreUnused (sampleRate, samplesPerBlock);
+    // Initialize validated Z-plane filter (EngineField implementation)
+    filter_.prepare(sampleRate, samplesPerBlock);
+    filter_.reset();
+
+    // Load initial shape pair (Vowel = 0)
+    int pairIndex = pairParam_ ? static_cast<int>(*pairParam_) : 0;
+
+    // Map pair index to authentic EMU shapes
+    switch (pairIndex)
+    {
+        case 0: filter_.setShapePair(emu::VOWEL_A, emu::VOWEL_B); break;
+        case 1: filter_.setShapePair(emu::BELL_A, emu::BELL_B); break;
+        case 2: filter_.setShapePair(emu::LOW_A, emu::LOW_B); break;
+        case 3: filter_.setShapePair(emu::SUB_A, emu::SUB_B); break;
+        default: filter_.setShapePair(emu::VOWEL_A, emu::VOWEL_B); break;
+    }
+
+    lastPairIndex_ = pairIndex;
 }
 
 void PluginProcessor::releaseResources()
 {
-    // When playback stops, you can use this as an opportunity to free up any
-    // spare memory, etc.
+    // Resources cleanup if needed
 }
 
 bool PluginProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -103,13 +159,11 @@ bool PluginProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
     juce::ignoreUnused (layouts);
     return true;
   #else
-    // This is the place where you check if the layout is supported.
-    // In this template code we only support mono or stereo.
+    // Support mono or stereo
     if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
      && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
 
-    // This checks if the input layout matches the output layout
    #if ! JucePlugin_IsSynth
     if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
         return false;
@@ -124,37 +178,69 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 {
     juce::ignoreUnused (midiMessages);
 
+    // JUCE 8 best practice: prevent denormal CPU spikes
     juce::ScopedNoDenormals noDenormals;
+
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
+    // Clear extra output channels
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    if (totalNumInputChannels == 0)
+        return;
+
+    // Read parameters from cached atomic pointers (RT-safe)
+    int pairIndex = pairParam_ ? static_cast<int>(*pairParam_) : 0;
+    float morph = morphParam_ ? static_cast<float>(*morphParam_) : 0.5f;
+    float intensity = intensityParam_ ? static_cast<float>(*intensityParam_) : 0.5f;
+    float mix = mixParam_ ? static_cast<float>(*mixParam_) : 1.0f;
+    // Note: autoMakeup not used in validated filter (always on by design)
+
+    // Check if shape pair changed
+    if (pairIndex != lastPairIndex_)
     {
-        auto* channelData = buffer.getWritePointer (channel);
-        juce::ignoreUnused (channelData);
-        // ..do something to the data...
+        switch (pairIndex)
+        {
+            case 0: filter_.setShapePair(emu::VOWEL_A, emu::VOWEL_B); break;
+            case 1: filter_.setShapePair(emu::BELL_A, emu::BELL_B); break;
+            case 2: filter_.setShapePair(emu::LOW_A, emu::LOW_B); break;
+            case 3: filter_.setShapePair(emu::SUB_A, emu::SUB_B); break;
+            default: filter_.setShapePair(emu::VOWEL_A, emu::VOWEL_B); break;
+        }
+        lastPairIndex_ = pairIndex;
+    }
+
+    // Update filter parameters (smoothed internally via LinearSmoothedValue)
+    filter_.setMorph(morph);
+    filter_.setIntensity(intensity);
+    filter_.setMix(mix);
+    filter_.setDrive(emu::AUTHENTIC_DRIVE);  // Use authentic EMU drive amount
+
+    // CRITICAL: Update coefficients ONCE per block (prevents zipper noise)
+    filter_.updateCoeffsBlock(buffer.getNumSamples());
+
+    // Process audio (handles stereo or mono, includes wet/dry mix internally)
+    if (totalNumInputChannels >= 2)
+    {
+        // Stereo processing
+        float* left = buffer.getWritePointer(0);
+        float* right = buffer.getWritePointer(1);
+        filter_.process(left, right, buffer.getNumSamples());
+    }
+    else
+    {
+        // Mono processing - use same buffer for both L+R
+        float* mono = buffer.getWritePointer(0);
+        filter_.process(mono, mono, buffer.getNumSamples());
     }
 }
 
 //==============================================================================
 bool PluginProcessor::hasEditor() const
 {
-    return true; // (change this to false if you choose to not supply an editor)
+    return true;
 }
 
 juce::AudioProcessorEditor* PluginProcessor::createEditor()
@@ -165,21 +251,27 @@ juce::AudioProcessorEditor* PluginProcessor::createEditor()
 //==============================================================================
 void PluginProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
-    juce::ignoreUnused (destData);
+    // Save APVTS state
+    auto state = state_.copyState();
+    std::unique_ptr<juce::XmlElement> xml(state.createXml());
+    copyXmlToBinary(*xml, destData);
 }
 
 void PluginProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
-    juce::ignoreUnused (data, sizeInBytes);
+    // Restore APVTS state
+    std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+
+    if (xmlState.get() != nullptr)
+    {
+        if (xmlState->hasTagName(state_.state.getType()))
+        {
+            state_.replaceState(juce::ValueTree::fromXml(*xmlState));
+        }
+    }
 }
 
 //==============================================================================
-// This creates new instances of the plugin..
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new PluginProcessor();
