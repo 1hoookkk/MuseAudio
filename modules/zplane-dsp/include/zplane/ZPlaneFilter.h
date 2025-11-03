@@ -279,6 +279,12 @@ namespace emu
                 float wetL = cascadeL.process(l);
                 float wetR = cascadeR.process(r);
 
+                // CRITICAL SAFETY: Output soft clipper (prevents resonance explosion / ear damage)
+                // Added after Oct 28, 2025 ear damage incident with Bell shapes
+                // tanh provides gentle rolloff vs hard limit (preserves character)
+                wetL = std::tanh(wetL * 0.8f) * 1.25f;
+                wetR = std::tanh(wetR * 0.8f) * 1.25f;
+
                 // Mix (equal-power to avoid perceived dips around 50% and preserve tone with nonlinearities)
                 // Use TRUE dry signal (inL/inR) not driven signal for authentic bypass tone
                 const float wetG = std::sqrt(mix);
