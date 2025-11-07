@@ -1,369 +1,324 @@
-#pragma once
+﻿#pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_graphics/juce_graphics.h>
-#include <map>
+#include <juce_opengl/juce_opengl.h>
+#include <array>
 #include <atomic>
 
 /**
- * HalftoneMouth - Professional Halftone Mouth Visualization (JUCE 8 Best Practice)
- * 
- * Design Philosophy:
- * - Pre-rendered halftone PNG masks for each vowel shape
- * - Smooth crossfading between masks based on DSP state
- * - GPU-accelerated rendering (optional OpenGL path)
- * - Brutalist aesthetic: abstract, minimal, NO teeth
- * 
- * JUCE 8 Best Practices:
- * ✅ Asset-based rendering (not procedural CPU drawing)
- * ✅ Lock-free atomic communication (DSP → UI)
- * ✅ Smooth interpolation at 60fps
- * ✅ Resolution-independent (can scale masks)
- * ✅ Tintable color (supports theme changes)
- * 
- * Asset Requirements:
- * - 5-7 PNG files in assets/images/mouth/
- * - White halftone dots on transparent/black background
- * - 240×90 pixels (16:6 aspect ratio)
- * - Loaded via BinaryData by CMake
+ * HalftoneMouth (Procedural) – JUCE 8.0.10 Best Practice
+ *
+ * New approach: NO external PNG assets. We render a 16×6 dot matrix procedurally.
+ * Each vowel shape (AA, AH, EE, OH, OO) is a template of target radii (0..1) for each cell.
+ * Morphing blends between two active templates derived from DSP vowel state + morph value.
+ * Audio level animates global brightness and subtle per-dot breathing.
+ * Micro-expressions & transient pulses layer organic life without allocating.
+ * Optional OpenGL acceleration: attach() enables GPU path; CPU fallback is default.
  */
 class HalftoneMouth : public juce::Component,
-                      private juce::Timer
+                      private juce::Timer,
+                      public juce::OpenGLRenderer
 {
 public:
-    // Vowel shapes matching PluginProcessor::VowelShape
-    enum class Vowel
-    {
-        AA,         // Wide open vertical oval
-        AH,         // Medium relaxed (neutral)
-        EE,         // Horizontal slit smile
-        OH,         // Round bell opening
-        OO,         // Small tight circle
-        Closed,     // Dormant/idle state
-        Glitch      // Distorted (struggle/meltdown)
-    };
+    enum class Vowel { AA, AH, EE, OH, OO };
 
-    HalftoneMouth()
+    HalftoneMouth(bool useOpenGL = false)
     {
-        loadMouthAssets();
-        startTimerHz(60);  // 60fps smooth animation
+        initialiseShapeTemplates();
+        startTimerHz(60);
+        if (useOpenGL)
+            attachOpenGL();
     }
 
     ~HalftoneMouth() override
     {
+        if (openGLAttached_)
+            detachOpenGL();
         stopTimer();
     }
 
-    // === Thread-Safe State Updates (from Audio Thread) ===
-    
-    void setVowel(Vowel vowel)
-    {
-        targetVowel_.store(static_cast<int>(vowel), std::memory_order_relaxed);
-    }
+    // === Thread-safe setters (audio thread writes) ===
+    void setVowel(Vowel v)                     { targetVowel_.store(static_cast<int>(v), std::memory_order_relaxed); }
+    void setAudioLevel(float level)            { audioLevel_.store(level, std::memory_order_relaxed); }
+    void setMorph(float morph)                 { morph_.store(juce::jlimit(0.0f, 1.0f, morph), std::memory_order_relaxed); }
+    void setTintColor(juce::Colour c)          { tint_ = c; repaint(); }
+    void setJitter(bool enabled)               { jitterActive_.store(enabled, std::memory_order_relaxed); }
+    void triggerGlitchFrame()                  { glitchFrames_.store(2, std::memory_order_relaxed); }
 
-    void setAudioLevel(float level)
+    // === Public control for GPU path ===
+    void attachOpenGL()
     {
-        audioLevel_.store(level, std::memory_order_relaxed);
+        if (!openGLAttached_)
+        {
+            openGLContext_.setRenderer(this);
+            openGLContext_.attachTo(*this);
+            openGLContext_.setContinuousRepainting(true);
+            openGLAttached_ = true;
+        }
     }
-
-    void setMorph(float morph)
+    void detachOpenGL()
     {
-        morphPosition_.store(morph, std::memory_order_relaxed);
-    }
-
-    // === Visual Styling ===
-    
-    void setTintColor(juce::Colour color)
-    {
-        tintColor_ = color;
-        repaint();
+        if (openGLAttached_)
+        {
+            openGLContext_.detach();
+            openGLAttached_ = false;
+        }
     }
 
     void paint(juce::Graphics& g) override
     {
-        auto bounds = getLocalBounds().toFloat();
-
-        // === 1. Determine Current Vowel State ===
-        Vowel currentVowel = static_cast<Vowel>(currentVowel_);
-        Vowel targetVowel = static_cast<Vowel>(targetVowel_.load(std::memory_order_relaxed));
-
-        // === 2. Get Source and Target Masks ===
-        auto sourceMask = getMaskForVowel(currentVowel);
-        auto targetMask = getMaskForVowel(targetVowel);
-
-        if (!sourceMask.isValid() && !targetMask.isValid())
-        {
-            // Fallback: Draw simple placeholder
-            drawPlaceholder(g, bounds);
-            return;
-        }
-
-        // === 3. Calculate Crossfade Alpha ===
-        float alpha = crossfadeAlpha_;
-
-        // === 4. Draw Crossfaded Masks ===
-        if (sourceMask.isValid() && alpha > 0.0f)
-        {
-            drawMask(g, bounds, sourceMask, 1.0f - alpha);
-        }
-
-        if (targetMask.isValid() && alpha < 1.0f)
-        {
-            drawMask(g, bounds, targetMask, alpha);
-        }
-
-        // === 5. Apply Audio-Reactive Brightness ===
-        float brightness = 0.7f + (currentAudioLevel_ * 0.3f);  // 70-100% brightness range
-        
-        if (brightness < 1.0f)
-        {
-            g.setColour(juce::Colours::black.withAlpha(1.0f - brightness));
-            g.fillRect(bounds);
-        }
+        if (openGLAttached_) return; // GPU path handled in renderOpenGL()
+        renderCPU(g);
     }
 
-    void resized() override
+    void resized() override {}
+
+    // === OpenGLRenderer callbacks ===
+    void newOpenGLContextCreated() override {}
+    void renderOpenGL() override
     {
-        // No child components
+        juce::OpenGLHelpers::clear(juce::Colours::black);
+        juce::Graphics g(*juce::Image::null); // We will fallback to immediate mode via helper (simplified)
+        // For simplicity in this prototype, reuse CPU renderer logic on a temporary Image.
+        // A production path would write a GLSL shader using per-vertex circle impostors.
+        renderCPU(glRenderGraphics_);
     }
+    void openGLContextClosing() override {}
 
 private:
-    void timerCallback() override
+    // === Core procedural render ===
+    void renderCPU(juce::Graphics& g)
     {
-        // Poll atomics from audio thread
-        int targetVowelInt = targetVowel_.load(std::memory_order_relaxed);
-        float audioLevel = audioLevel_.load(std::memory_order_relaxed);
-        float morph = morphPosition_.load(std::memory_order_relaxed);
+        auto bounds = getLocalBounds().toFloat();
+        const int cols = kCols;
+        const int rows = kRows;
 
-        // Update audio level with smoothing
-        currentAudioLevel_ += (audioLevel - currentAudioLevel_) * 0.2f;
+        // Animation / state snapshots
+        float audio = audioLevel_.load(std::memory_order_relaxed);
+        float morphPos = morph_.load(std::memory_order_relaxed);
+        Vowel tv = static_cast<Vowel>(targetVowel_.load(std::memory_order_relaxed));
+        int glitchLeft = glitchFrames_.load(std::memory_order_relaxed);
+        bool jitter = jitterActive_.load(std::memory_order_relaxed);
 
-        // === Autonomous Life: Subtle Breathing ===
-        // Slow sine wave that gently scales the mouth (±2% size variation)
-        breathingPhase_ += 0.02f;  // ~3 second breathing cycle
-        if (breathingPhase_ > juce::MathConstants<float>::twoPi)
-            breathingPhase_ -= juce::MathConstants<float>::twoPi;
-        
-        breathingScale_ = 1.0f + (std::sin(breathingPhase_) * 0.02f);
+        // Resolve current + target vowel for template selection
+        Vowel currentVowel = static_cast<Vowel>(currentVowel_);
 
-        // === Autonomous Life: Rare Micro-Expressions ===
-        // Every ~8 seconds, trigger a subtle "character moment"
-        if (++autonomousFrameCount_ > 480)  // 8 seconds at 60fps
+        // Morphing across vowel templates (source→target when crossfadeActive)
+        if (tv != currentVowel)
         {
-            auto& random = juce::Random::getSystemRandom();
-            if (random.nextFloat() < 0.3f)  // 30% chance
-            {
-                // Trigger subtle expression (quick blink, sigh, micro-shift)
-                microExpressionFrames_ = 6;  // 100ms expression
-                microExpressionType_ = random.nextInt(3);  // 0=blink, 1=sigh, 2=asymmetry
-            }
-            autonomousFrameCount_ = 0;
-        }
-
-        // Update micro-expression countdown
-        if (microExpressionFrames_ > 0)
-            microExpressionFrames_--;
-
-        // === Audio-Reactive: Transient Pulse ===
-        // When audio suddenly increases, mouth pulses larger for a moment
-        float audioChange = audioLevel - previousAudioLevel_;
-        if (audioChange > 0.15f)  // Detected transient
-        {
-            transientPulseFrames_ = 4;  // 66ms pulse
-        }
-        previousAudioLevel_ = audioLevel;
-
-        if (transientPulseFrames_ > 0)
-        {
-            transientPulseFrames_--;
-            transientPulseScale_ = 1.0f + (transientPulseFrames_ * 0.03f);  // Up to +12% size
-        }
-        else
-        {
-            transientPulseScale_ = 1.0f;
-        }
-
-        // === Vowel Transition (Smooth Crossfading) ===
-        if (targetVowelInt != currentVowel_)
-        {
-            // Smooth crossfade to new vowel
-            crossfadeAlpha_ += 0.08f;  // ~12 frames to complete (200ms at 60fps)
-
+            crossfadeAlpha_ += 0.08f;
             if (crossfadeAlpha_ >= 1.0f)
             {
                 crossfadeAlpha_ = 0.0f;
-                currentVowel_ = targetVowelInt;
+                currentVowel_ = static_cast<int>(tv);
             }
         }
-        else
+        else if (crossfadeAlpha_ > 0.0f)
         {
-            // Reset crossfade when stable
-            if (crossfadeAlpha_ > 0.0f)
+            crossfadeAlpha_ = juce::jmax(0.0f, crossfadeAlpha_ - 0.05f);
+        }
+
+        // Background (pure black inside scrying mirror region)
+        g.setColour(juce::Colours::black);
+        g.fillRect(bounds);
+
+        // Layout constants
+        const float gridW = bounds.getWidth();
+        const float gridH = bounds.getHeight();
+        const float cellW = gridW / (float)cols;
+        const float cellH = gridH / (float)rows;
+
+        // Breathing + transient pulses
+        float breathScale = 1.0f + std::sin(breathPhase_) * 0.02f;
+        float transientScale = transientPulseScale_;
+        float globalScale = breathScale * transientScale;
+
+        // Iterate grid
+        const auto& baseTemplate = shapes_[static_cast<int>(currentVowel_)];
+        const auto& targetTemplate = shapes_[static_cast<int>(tv)];
+
+        for (int r = 0; r < rows; ++r)
+        {
+            for (int c = 0; c < cols; ++c)
             {
-                crossfadeAlpha_ = std::max(0.0f, crossfadeAlpha_ - 0.05f);
+                int idx = r * cols + c;
+                float srcRadius = baseTemplate[idx];
+                float dstRadius = targetTemplate[idx];
+
+                // Crossfade between vowels + morph modulation (morph influences openness weighting)
+                float vowelBlend = crossfadeAlpha_ * dstRadius + (1.0f - crossfadeAlpha_) * srcRadius;
+                float opennessMod = juce::jmap(morphPos, 0.0f, 1.0f, 0.85f, 1.15f);
+                float finalRadius = vowelBlend * opennessMod;
+
+                // Audio brightness scaling (dot fill intensity)
+                float brightness = 0.6f + audio * 0.4f; // 0.6 .. 1.0
+
+                // Micro-expression adjustments
+                if (microExpressionFrames_ > 0)
+                {
+                    switch (microExpressionType_)
+                    {
+                        case 0: // blink -> squash vertically
+                            finalRadius *= (r == rows / 2 ? 0.4f : 0.8f);
+                            break;
+                        case 1: // sigh -> slightly larger overall
+                            finalRadius *= 1.05f;
+                            break;
+                        case 2: // asymmetry -> shift columns right side bigger
+                            if (c > cols / 2) finalRadius *= 1.08f;
+                            break;
+                    }
+                }
+
+                if (glitchLeft > 0)
+                {
+                    // Glitch: random skip / random scale
+                    auto& rand = juce::Random::getSystemRandom();
+                    if (rand.nextFloat() < 0.15f) continue;
+                    finalRadius *= rand.nextFloat() * 1.5f;
+                }
+                else if (jitter)
+                {
+                    finalRadius *= 0.9f + juce::Random::getSystemRandom().nextFloat() * 0.2f;
+                }
+
+                // Convert radius (0..1) into pixel diameter relative to cell size
+                float maxDot = juce::jmin(cellW, cellH) * 0.9f * globalScale;
+                float diameter = maxDot * finalRadius;
+                if (diameter < 0.8f) continue; // Skip near-zero dots for clarity
+
+                float cx = bounds.getX() + c * cellW + cellW * 0.5f;
+                float cy = bounds.getY() + r * cellH + cellH * 0.5f;
+
+                // Color: tint with brightness
+                juce::Colour dotColour = tint_.withMultipliedAlpha(brightness);
+                g.setColour(dotColour);
+                g.fillEllipse(cx - diameter * 0.5f, cy - diameter * 0.5f, diameter, diameter);
             }
         }
+    }
+
+    void timerCallback() override
+    {
+        // Smooth audio level
+        float lvl = audioLevel_.load(std::memory_order_relaxed);
+        smoothedAudio_ += (lvl - smoothedAudio_) * 0.15f;
+
+        // Breathing phase
+        breathPhase_ += 0.02f;
+        if (breathPhase_ > juce::MathConstants<float>::twoPi)
+            breathPhase_ -= juce::MathConstants<float>::twoPi;
+
+        // Transient detection
+        float delta = lvl - prevAudio_;
+        if (delta > 0.18f)
+        {
+            transientPulseFrames_ = 5;
+        }
+        prevAudio_ = lvl;
+
+        if (transientPulseFrames_ > 0)
+        {
+            transientPulseScale_ = 1.0f + transientPulseFrames_ * 0.04f; // up to ~1.2
+            --transientPulseFrames_;
+        }
+        else transientPulseScale_ = 1.0f;
+
+        // Micro-expression scheduling
+        if (++framesSinceExpression_ > 480) // ~8s
+        {
+            auto& rand = juce::Random::getSystemRandom();
+            if (rand.nextFloat() < 0.35f)
+            {
+                microExpressionFrames_ = 6;
+                microExpressionType_ = rand.nextInt(3);
+            }
+            framesSinceExpression_ = 0;
+        }
+        if (microExpressionFrames_ > 0) --microExpressionFrames_;
+
+        // Glitch frame countdown
+        int g = glitchFrames_.load(std::memory_order_relaxed);
+        if (g > 0) glitchFrames_.store(g - 1, std::memory_order_relaxed);
 
         repaint();
     }
 
-    void loadMouthAssets()
+    void initialiseShapeTemplates()
     {
-        // Load PNG masks from BinaryData (populated by CMake Assets.cmake)
-        // Format: mouth_[vowel].png -> BinaryData::mouth_[vowel]_png
-        
-        // NOTE: Uncomment these once PNGs are generated and added to assets/
-        
-        // mouthMasks_[Vowel::AA] = loadImageFromBinaryData("mouth_AA_wide_png");
-        // mouthMasks_[Vowel::AH] = loadImageFromBinaryData("mouth_AH_neutral_png");
-        // mouthMasks_[Vowel::EE] = loadImageFromBinaryData("mouth_EE_smile_png");
-        // mouthMasks_[Vowel::OH] = loadImageFromBinaryData("mouth_OH_round_png");
-        // mouthMasks_[Vowel::OO] = loadImageFromBinaryData("mouth_OO_tight_png");
-        // mouthMasks_[Vowel::Closed] = loadImageFromBinaryData("mouth_closed_png");
-        // mouthMasks_[Vowel::Glitch] = loadImageFromBinaryData("mouth_glitch_png");
-    }
+        // Each template: 16*6 = 96 floats (0..1). 0 means no dot, higher means larger relative radius.
+        // Templates kept intentionally stylised, not anatomically perfect.
+        auto make = [&](std::initializer_list<float> values){
+            std::array<float, kTotal> arr{}; int i=0; for (auto v: values) arr[i++] = v; return arr; };
 
-    juce::Image loadImageFromBinaryData(const char* resourceName)
-    {
-        // Helper to load PNG from BinaryData
-        // Once assets are added, use:
-        // int dataSize = 0;
-        // const char* data = BinaryData::getNamedResource(resourceName, dataSize);
-        // if (data != nullptr)
-        //     return juce::ImageFileFormat::loadFrom(data, dataSize);
-        
-        return juce::Image();  // Empty image if not found
-    }
+        // Helper lambdas for pattern generation
+        auto ellipse = [&](float xNorm, float yNorm, float rx, float ry){
+            float dx = (xNorm - 0.5f) / rx;
+            float dy = (yNorm - 0.5f) / ry;
+            float d = dx*dx + dy*dy;
+            if (d <= 1.0f) return 1.0f - d; // radial falloff
+            return 0.0f;
+        };
 
-    juce::Image getMaskForVowel(Vowel vowel)
-    {
-        auto it = mouthMasks_.find(vowel);
-        if (it != mouthMasks_.end())
-            return it->second;
-        
-        return juce::Image();  // Return empty image if not found
-    }
-
-    void drawMask(juce::Graphics& g, juce::Rectangle<float> bounds, 
-                   const juce::Image& mask, float alpha)
-    {
-        if (!mask.isValid())
-            return;
-
-        // Calculate scaling to fit bounds while maintaining aspect ratio
-        float scaleX = bounds.getWidth() / mask.getWidth();
-        float scaleY = bounds.getHeight() / mask.getHeight();
-        float scale = std::min(scaleX, scaleY);
-
-        // === Apply Autonomous Life: Breathing + Transient Pulses ===
-        scale *= breathingScale_ * transientPulseScale_;
-
-        // === Apply Micro-Expressions ===
-        if (microExpressionFrames_ > 0)
-        {
-            if (microExpressionType_ == 0)  // Blink: shrink vertically
+        auto buildTemplate = [&](float rx, float ry, float minCut){
+            std::array<float, kTotal> arr{};
+            for (int r=0; r<kRows; ++r)
             {
-                scaleY *= 0.5f;
+                for (int c=0; c<kCols; ++c)
+                {
+                    float x = (c + 0.5f) / kCols;
+                    float y = (r + 0.5f) / kRows;
+                    float v = ellipse(x,y,rx,ry);
+                    if (v < minCut) v = 0.0f; // carve opening void
+                    arr[r*kCols + c] = v;
+                }
             }
-            else if (microExpressionType_ == 1)  // Sigh: expand slightly
-            {
-                scale *= 1.05f;
-            }
-            // Type 2 (asymmetry) handled below in position offset
-        }
+            return arr;
+        };
 
-        float scaledWidth = mask.getWidth() * scale;
-        float scaledHeight = mask.getHeight() * scale;
-
-        float centerX = bounds.getCentreX();
-        float centerY = bounds.getCentreY();
-
-        // === Micro-Expression: Asymmetry (slight horizontal offset) ===
-        if (microExpressionFrames_ > 0 && microExpressionType_ == 2)
-        {
-            centerX += 3.0f;  // Subtle shift right
-        }
-
-        auto drawBounds = juce::Rectangle<float>(
-            centerX - scaledWidth * 0.5f,
-            centerY - scaledHeight * 0.5f,
-            scaledWidth,
-            scaledHeight
-        );
-
-        // Apply tint color with alpha
-        g.setColour(tintColor_.withAlpha(alpha));
-        
-        // Draw mask using multiply blend mode for halftone effect
-        g.setOpacity(alpha);
-        g.drawImage(mask, drawBounds, juce::RectanglePlacement::centred);
+        // Distinct shapes:
+        shapes_[(int)Vowel::AA] = buildTemplate(0.32f, 0.50f, 0.15f); // tall open
+        shapes_[(int)Vowel::AH] = buildTemplate(0.38f, 0.42f, 0.20f); // neutral
+        shapes_[(int)Vowel::EE] = buildTemplate(0.55f, 0.25f, 0.22f); // wide horizontal
+        shapes_[(int)Vowel::OH] = buildTemplate(0.40f, 0.40f, 0.18f); // near circle
+        shapes_[(int)Vowel::OO] = buildTemplate(0.22f, 0.30f, 0.10f); // small tight
     }
 
-    void drawPlaceholder(juce::Graphics& g, juce::Rectangle<float> bounds)
-    {
-        // Temporary placeholder while waiting for PNG assets
-        // Simple procedural dots in a grid pattern
-        
-        const int rows = 6;
-        const int cols = 16;
-        
-        float dotSpacingX = bounds.getWidth() / (cols + 1);
-        float dotSpacingY = bounds.getHeight() / (rows + 1);
-        
-        g.setColour(tintColor_.withAlpha(0.7f + currentAudioLevel_ * 0.3f));
-        
-        for (int row = 0; row < rows; ++row)
-        {
-            for (int col = 0; col < cols; ++col)
-            {
-                float x = bounds.getX() + (col + 1) * dotSpacingX;
-                float y = bounds.getY() + (row + 1) * dotSpacingY;
-                
-                // Vary dot size based on position (simple mouth-like shape)
-                float centerCol = cols * 0.5f;
-                float centerRow = rows * 0.5f;
-                float distX = std::abs(col - centerCol) / centerCol;
-                float distY = std::abs(row - centerRow) / centerRow;
-                float size = 2.0f + (1.0f - distX * distY) * 3.0f;
-                
-                g.fillEllipse(x - size * 0.5f, y - size * 0.5f, size, size);
-            }
-        }
-        
-        // Draw "AWAITING ASSETS" text
-        g.setFont(juce::Font(8.0f));
-        g.setColour(tintColor_.withAlpha(0.3f));
-        g.drawText("AWAITING PNG ASSETS", bounds.reduced(10.0f), 
-                   juce::Justification::centredBottom, true);
-    }
+    // === Constants ===
+    static constexpr int kCols = 16;
+    static constexpr int kRows = 6;
+    static constexpr int kTotal = kCols * kRows;
 
-    // === Asset Storage ===
-    std::map<Vowel, juce::Image> mouthMasks_;
+    // Templates
+    std::array<std::array<float, kTotal>, 5> shapes_{}; // AA, AH, EE, OH, OO
 
-    // === Thread-Safe State (Written by Audio Thread) ===
-    std::atomic<int> targetVowel_ {static_cast<int>(Vowel::AH)};
-    std::atomic<float> audioLevel_ {0.0f};
-    std::atomic<float> morphPosition_ {0.5f};
+    // Atomics (audio thread writes)
+    std::atomic<int>   targetVowel_{ static_cast<int>(Vowel::AH) };
+    std::atomic<float> audioLevel_{ 0.0f };
+    std::atomic<float> morph_{ 0.5f };
+    std::atomic<bool>  jitterActive_{ false };
+    std::atomic<int>   glitchFrames_{ 0 }; // meltdown effect
 
-    // === Animation State (UI Thread Only) ===
-    int currentVowel_ = static_cast<int>(Vowel::AH);
+    // UI thread state
+    int   currentVowel_ = static_cast<int>(Vowel::AH);
     float crossfadeAlpha_ = 0.0f;
-    float currentAudioLevel_ = 0.0f;
-    float previousAudioLevel_ = 0.0f;
+    float smoothedAudio_ = 0.0f;
+    float prevAudio_ = 0.0f;
+    float breathPhase_ = 0.0f;
+    int   transientPulseFrames_ = 0;
+    float transientPulseScale_ = 1.0f;
+    int   framesSinceExpression_ = 0;
+    int   microExpressionFrames_ = 0;
+    int   microExpressionType_ = 0; // 0 blink,1 sigh,2 asymmetry
 
-    // === Autonomous Life State ===
-    float breathingPhase_ = 0.0f;              // Slow breathing cycle
-    float breathingScale_ = 1.0f;              // ±2% size variation
-    int autonomousFrameCount_ = 0;             // Frame counter for rare moments
-    int microExpressionFrames_ = 0;            // Countdown for expressions
-    int microExpressionType_ = 0;              // 0=blink, 1=sigh, 2=asymmetry
+    // Visual style
+    juce::Colour tint_{ juce::Colours::white };
 
-    // === Audio-Reactive State ===
-    int transientPulseFrames_ = 0;             // Countdown for transient pulse
-    float transientPulseScale_ = 1.0f;         // Transient size boost
-
-    // === Visual Style ===
-    juce::Colour tintColor_ {juce::Colours::white};
+    // OpenGL context (optional)
+    juce::OpenGLContext openGLContext_;
+    bool openGLAttached_ = false;
+    juce::Graphics glRenderGraphics_{ *juce::Image::null }; // placeholder simplification
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(HalftoneMouth)
 };
