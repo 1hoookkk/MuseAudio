@@ -1,0 +1,147 @@
+{
+  "version": "2.0.0",
+  "inputs": [
+    {
+      "id": "cfg",
+      "type": "pickString",
+      "description": "CMake configuration",
+      "options": ["Release", "Debug"],
+      "default": "Release"
+    }
+  ],
+  "tasks": [
+    {
+      "label": "Configure: CMake (VS2022 x64)",
+      "type": "shell",
+      "command": "cmake -B build -G \"Visual Studio 17 2022\" -A x64",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build: All (${input:cfg})",
+      "type": "shell",
+      "command": "cmake --build build --config ${input:cfg}",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Build: VST3 (${input:cfg})",
+      "type": "shell",
+      "command": "cmake --build build --config ${input:cfg} --target Muse_VST3",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Build: CLAP (${input:cfg})",
+      "type": "shell",
+      "command": "cmake --build build --config ${input:cfg} --target Muse_CLAP",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Build: Standalone (${input:cfg})",
+      "type": "shell",
+      "command": "cmake --build build --config ${input:cfg} --target Muse_Standalone",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Copy: VST3 → %AppData%/VST3 (${input:cfg})",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File tools/post_build_copy.ps1 -Config ${input:cfg} -PluginName Muse -VST3",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Copy: CLAP → %LocalAppData%/Programs/Common/CLAP (${input:cfg})",
+      "type": "shell",
+      "command": "powershell -ExecutionPolicy Bypass -File tools/post_build_copy.ps1 -Config ${input:cfg} -PluginName Muse -CLAP",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build+Copy: VST3 (${input:cfg})",
+      "dependsOn": [
+        "Build: VST3 (${input:cfg})",
+        "Copy: VST3 → %AppData%/VST3 (${input:cfg})"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Build+Copy: CLAP (${input:cfg})",
+      "dependsOn": [
+        "Build: CLAP (${input:cfg})",
+        "Copy: CLAP → %LocalAppData%/Programs/Common/CLAP (${input:cfg})"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Tests: Build (${input:cfg})",
+      "type": "shell",
+      "command": "cmake --build build --config ${input:cfg} --target Tests",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Tests: Run (${input:cfg})",
+      "type": "shell",
+      "command": "${workspaceFolder}/build/${input:cfg}/Tests.exe --reporter console",
+      "windows": {
+        "command": "${workspaceFolder}\\build\\${input:cfg}\\Tests.exe --reporter console"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Tests: Build+Run (${input:cfg})",
+      "dependsOn": ["Tests: Build (${input:cfg})", "Tests: Run (${input:cfg})"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Run: Standalone (${input:cfg})",
+      "type": "shell",
+      "command": "${workspaceFolder}/build/Muse_artefacts/${input:cfg}/Standalone/Muse.exe",
+      "windows": {
+        "command": "${workspaceFolder}\\build\\Muse_artefacts\\${input:cfg}\\Standalone\\Muse.exe"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Clean: Build tree (${input:cfg})",
+      "type": "shell",
+      "command": "cmake --build build --config ${input:cfg} --target clean",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Open: User VST3 folder",
+      "type": "shell",
+      "command": "powershell -NoProfile -Command Start-Process -FilePath explorer.exe -ArgumentList ($env:APPDATA+'\\VST3')",
+      "problemMatcher": []
+    },
+    {
+      "label": "Open: User CLAP folder",
+      "type": "shell",
+      "command": "powershell -NoProfile -Command Start-Process -FilePath explorer.exe -ArgumentList ($env:LOCALAPPDATA+'\\Programs\\Common\\CLAP')",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build+Copy+Open: VST3 (${input:cfg})",
+      "dependsOn": [
+        "Build: VST3 (${input:cfg})",
+        "Copy: VST3 → %AppData%/VST3 (${input:cfg})",
+        "Open: User VST3 folder"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Build+Copy+Open: CLAP (${input:cfg})",
+      "dependsOn": [
+        "Build: CLAP (${input:cfg})",
+        "Copy: CLAP → %LocalAppData%/Programs/Common/CLAP (${input:cfg})",
+        "Open: User CLAP folder"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

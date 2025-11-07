@@ -53,14 +53,68 @@ PluginEditor::PluginEditor (PluginProcessor& p)
     // === Setup OLED Mouth (generative, audio-reactive) ===
     addAndMakeVisible(generativeMouth);
 
+    // === Setup Muse Transmission (synesthetic personality) ===
+    addAndMakeVisible(museTransmission);
+
     // === Setup Transmission Area ===
     addAndMakeVisible(transmissionArea);
 
     // === Setup Status Bar ===
     addAndMakeVisible(statusBar);
 
-    // === Setup Shape Pair Selector ===
-    addAndMakeVisible(shapePairSelector);
+    // === Setup Preset Selector (NEW: Simplified UI) ===
+    presetSelector.setTextWhenNothingSelected("-- Select Preset --");
+    presetSelector.setTextWhenNoChoicesAvailable("(No presets available)");
+    
+    // Add initial preset categories
+    presetSelector.addItem("INIT - Neutral", 1);
+    presetSelector.addSeparator();
+    presetSelector.addItem("Vowel: AA Dark", 10);
+    presetSelector.addItem("Vowel: AH Neutral", 11);
+    presetSelector.addItem("Vowel: EE Bright", 12);
+    presetSelector.addSeparator();
+    presetSelector.addItem("Bell: OH Round", 20);
+    presetSelector.addItem("Bell: OO Tight", 21);
+    presetSelector.addSeparator();
+    presetSelector.addItem("Low: Wide Bass", 30);
+    presetSelector.addItem("Low: Narrow Focus", 31);
+    presetSelector.addSeparator();
+    presetSelector.addItem("Sub: Deep Rumble", 40);
+    
+    presetSelector.onChange = [this]()
+    {
+        int selectedId = presetSelector.getSelectedId();
+        if (selectedId > 0)
+        {
+            // Map preset ID to shape pair and morph position
+            if (selectedId >= 10 && selectedId < 20) // Vowel presets
+            {
+                processorRef.getState().getParameter("pair")->setValueNotifyingHost(0.0f); // VOWEL
+                if (selectedId == 10) morphKnob.setValue(0.0);      // AA
+                else if (selectedId == 11) morphKnob.setValue(0.5);  // AH
+                else if (selectedId == 12) morphKnob.setValue(1.0);  // EE
+            }
+            else if (selectedId >= 20 && selectedId < 30) // Bell presets
+            {
+                processorRef.getState().getParameter("pair")->setValueNotifyingHost(1.0f / 3.0f); // BELL
+                if (selectedId == 20) morphKnob.setValue(0.25);  // OH
+                else if (selectedId == 21) morphKnob.setValue(0.75); // OO
+            }
+            else if (selectedId >= 30 && selectedId < 40) // Low presets
+            {
+                processorRef.getState().getParameter("pair")->setValueNotifyingHost(2.0f / 3.0f); // LOW
+                if (selectedId == 30) morphKnob.setValue(0.25);  // Wide
+                else if (selectedId == 31) morphKnob.setValue(0.75); // Narrow
+            }
+            else if (selectedId >= 40) // Sub presets
+            {
+                processorRef.getState().getParameter("pair")->setValueNotifyingHost(1.0f); // SUB
+                morphKnob.setValue(0.5); // Center
+            }
+        }
+    };
+    
+    addAndMakeVisible(presetSelector);
 
     // === Setup Header ===
     headerLabel.setText("MUSE", juce::dontSendNotification);
@@ -86,8 +140,9 @@ PluginEditor::PluginEditor (PluginProcessor& p)
     mixAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         processorRef.getState(), "mix", mixKnob);
 
-    // === Attach Shape Pair Selector ===
-    shapePairSelector.attachToParameter(processorRef.getState(), "pair");
+    // Shape pair now controlled via preset dropdown (hidden from user)
+    pairAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+        processorRef.getState(), "pair", presetSelector);
 
     // === Value Update Callbacks ===
     // THREAD-SAFE: Parameter callbacks can be triggered from audio thread during automation
@@ -120,20 +175,6 @@ PluginEditor::PluginEditor (PluginProcessor& p)
     // === Start lock-free state polling timer (30fps) ===
     // Polls audio level and filter state from audio thread → updates UI components
     startTimerHz(30);
-    
-    // Set up shape change callback (for messaging only; mouth follows processor state)
-    shapePairSelector.setShapeChangeCallback([this](const juce::String& shape) {
-        transmissionArea.setShapePair(shape);
-    });
-    
-    // Initialize with current shape (for messaging only)
-    {
-        auto currentPair = processorRef.getState().getParameter("pair")->getCurrentValueAsText();
-        if (currentPair.isEmpty()) {
-            currentPair = "VOWEL"; // Default
-        }
-        transmissionArea.setShapePair(currentPair);
-    }
 
     // === Set Plugin Size (400x600 from prototype) ===
     setSize(400, 600);
@@ -238,17 +279,21 @@ void PluginEditor::resized()
     // === Header (top) ===
     headerLabel.setBounds(0, padding, getWidth(), 20);
 
-    // === Shape Pair Selector (below header) ===
-    auto selectorBounds = juce::Rectangle<int>(50, padding + 28, 300, 32);
-    shapePairSelector.setBounds(selectorBounds);
+    // === Preset Dropdown (below header) ===
+    auto presetBounds = juce::Rectangle<int>(50, padding + 28, 300, 28);
+    presetSelector.setBounds(presetBounds);
 
-    // === OLED Screen (below selector) ===
-    auto screenBounds = juce::Rectangle<int>(50, selectorBounds.getBottom() + 8, 300, 150);
+    // === OLED Screen (below preset dropdown) ===
+    auto screenBounds = juce::Rectangle<int>(50, presetBounds.getBottom() + 12, 300, 150);
     // Mouth sits inside the black OLED area with a small inset
     generativeMouth.setBounds(screenBounds.reduced(6));
 
-    // === Transmission Area (below OLED screen) ===
-    auto transmissionBounds = juce::Rectangle<int>(50, screenBounds.getBottom() + 16, 300, 40);
+    // === Muse Transmission (below OLED screen) ===
+    auto museBounds = juce::Rectangle<int>(50, screenBounds.getBottom() + 8, 300, 50);
+    museTransmission.setBounds(museBounds);
+
+    // === Transmission Area (below Muse transmission) ===
+    auto transmissionBounds = juce::Rectangle<int>(50, museBounds.getBottom() + 8, 300, 40);
     transmissionArea.setBounds(transmissionBounds);
 
     // === Knobs (two rows) ===
@@ -302,6 +347,26 @@ void PluginEditor::timerCallback()
     // Lock-free read of audio level from audio thread (via atomic)
     // This makes the UI respond to ACTUAL audio activity, not just knob movements
     float audioLevel = processorRef.getAudioLevel();
+
+    // === Update Muse's Personality State ===
+    // Read DSP state from audio thread and update transmission text
+    auto museState = processorRef.getMuseState();
+    MuseTransmission::State transmissionState;
+    
+    switch (museState)
+    {
+        case PluginProcessor::MuseState::Flow:
+            transmissionState = MuseTransmission::State::Flow;
+            break;
+        case PluginProcessor::MuseState::Struggle:
+            transmissionState = MuseTransmission::State::Struggle;
+            break;
+        case PluginProcessor::MuseState::Meltdown:
+            transmissionState = MuseTransmission::State::Meltdown;
+            break;
+    }
+    
+    museTransmission.setState(transmissionState);
 
     // Update generative mouth with audio activity and vowel shape
     generativeMouth.setAudioLevel(audioLevel);

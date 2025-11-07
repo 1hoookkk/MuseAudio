@@ -1,0 +1,318 @@
+{
+  "$schema": "https://tr.designtokens.org/format/",
+  "muse": {
+    "color": {
+      "background": {
+        "texture": {
+          "value": "#343A40",
+          "type": "color",
+          "description": "Dark concrete texture base (15% opacity under warm overlay)"
+        },
+        "overlay": {
+          "value": "#FAF0E6",
+          "type": "color",
+          "description": "Warm linen overlay (85% opacity over texture)"
+        },
+        "result": {
+          "value": "rgba(250, 240, 230, 0.85) over rgba(52, 58, 64, 0.15)",
+          "type": "color",
+          "description": "Final composited background - warm with subtle dark depth"
+        }
+      },
+      "logo": {
+        "silhouette": {
+          "value": "#FAF9F6",
+          "type": "color",
+          "description": "Pale cream - logo silhouette color"
+        },
+        "card": {
+          "value": "#E8E3DB",
+          "type": "color",
+          "description": "Slightly darker warm card for logo background"
+        }
+      },
+      "text": {
+        "primary": {
+          "value": "#5C5552",
+          "type": "color",
+          "description": "Warm taupe - primary text and knob outlines"
+        },
+        "secondary": {
+          "value": "#8B8682",
+          "type": "color",
+          "description": "Lighter taupe - secondary text, hints"
+        },
+        "muse-voice": {
+          "value": "#4A4745",
+          "type": "color",
+          "description": "Darker taupe - Muse's transmission text"
+        }
+      },
+      "accent": {
+        "lilac": {
+          "value": "#C8B6D8",
+          "type": "color",
+          "description": "Soft lilac - gradient start"
+        },
+        "peach": {
+          "value": "#FFD4C4",
+          "type": "color",
+          "description": "Soft peach - gradient end"
+        },
+        "gradient": {
+          "value": "linear-gradient(135deg, #C8B6D8 0%, #FFD4C4 100%)",
+          "type": "gradient",
+          "description": "Lilac-to-peach gradient for active states and magic moments"
+        }
+      },
+      "transmission": {
+        "background": {
+          "value": "#E6D9F0",
+          "type": "color",
+          "description": "Soft lilac background for transmission area"
+        },
+        "glow": {
+          "value": "rgba(200, 182, 216, 0.3)",
+          "type": "color",
+          "description": "Subtle lilac glow for breathing/pulsing effects"
+        }
+      },
+      "knob": {
+        "outline": {
+          "value": "#5C5552",
+          "type": "color",
+          "description": "Warm taupe outline for knob circles"
+        },
+        "fill-inactive": {
+          "value": "#F5EFE7",
+          "type": "color",
+          "description": "Very light warm fill for inactive knobs"
+        },
+        "fill-active": {
+          "value": "linear-gradient(135deg, #C8B6D8 0%, #FFD4C4 100%)",
+          "type": "gradient",
+          "description": "Gradient fill when knob is active/touched"
+        },
+        "indicator": {
+          "value": "#5C5552",
+          "type": "color",
+          "description": "Thin line showing knob position"
+        }
+      }
+    },
+    "spacing": {
+      "unit": {
+        "value": 8,
+        "type": "dimension",
+        "description": "Base spacing unit (8px) - all spacing should be multiples of this"
+      },
+      "section": {
+        "value": 48,
+        "type": "dimension",
+        "description": "6 units - spacing between major sections"
+      },
+      "control": {
+        "value": 32,
+        "type": "dimension",
+        "description": "4 units - spacing between controls"
+      },
+      "label": {
+        "value": 12,
+        "type": "dimension",
+        "description": "1.5 units - spacing between control and label"
+      },
+      "padding": {
+        "small": {
+          "value": 16,
+          "type": "dimension",
+          "description": "2 units - small padding (cards, buttons)"
+        },
+        "medium": {
+          "value": 24,
+          "type": "dimension",
+          "description": "3 units - medium padding (sections)"
+        },
+        "large": {
+          "value": 40,
+          "type": "dimension",
+          "description": "5 units - large padding (main container edges)"
+        }
+      }
+    },
+    "typography": {
+      "family": {
+        "primary": {
+          "value": "system-ui, -apple-system, 'Segoe UI', sans-serif",
+          "type": "fontFamily",
+          "description": "Clean geometric sans-serif for UI"
+        },
+        "muse-voice": {
+          "value": "Georgia, 'Times New Roman', serif",
+          "type": "fontFamily",
+          "description": "Serif font for Muse's transmission text (more personal/hand-written feel)"
+        }
+      },
+      "size": {
+        "label": {
+          "value": 11,
+          "type": "dimension",
+          "description": "Small caps for parameter labels"
+        },
+        "value": {
+          "value": 14,
+          "type": "dimension",
+          "description": "Parameter values (when shown)"
+        },
+        "transmission": {
+          "value": 16,
+          "type": "dimension",
+          "description": "Muse's voice text"
+        },
+        "title": {
+          "value": 18,
+          "type": "dimension",
+          "description": "Section titles (if needed)"
+        }
+      },
+      "weight": {
+        "normal": {
+          "value": 400,
+          "type": "fontWeight"
+        },
+        "medium": {
+          "value": 500,
+          "type": "fontWeight",
+          "description": "For labels and emphasis"
+        },
+        "bold": {
+          "value": 600,
+          "type": "fontWeight",
+          "description": "Rarely used - only for critical states"
+        }
+      },
+      "letterSpacing": {
+        "label": {
+          "value": "0.08em",
+          "type": "dimension",
+          "description": "Slight letter spacing for small caps labels"
+        },
+        "normal": {
+          "value": "0",
+          "type": "dimension"
+        }
+      }
+    },
+    "effects": {
+      "shadow": {
+        "card": {
+          "value": "0 2px 8px rgba(92, 85, 82, 0.08)",
+          "type": "shadow",
+          "description": "Subtle shadow for floating cards (logo, transmission)"
+        },
+        "knob": {
+          "value": "0 1px 4px rgba(92, 85, 82, 0.12)",
+          "type": "shadow",
+          "description": "Very subtle shadow for knobs"
+        }
+      },
+      "blur": {
+        "texture": {
+          "value": 1,
+          "type": "dimension",
+          "description": "Slight blur on dark texture layer to soften it"
+        }
+      },
+      "animation": {
+        "stutter-fps": {
+          "value": 10,
+          "type": "number",
+          "description": "FPS for stutter-frame text reveal (10 fps = otherworldly but readable)"
+        },
+        "stutter-duration": {
+          "value": 400,
+          "type": "duration",
+          "description": "Total duration for text reveal in milliseconds"
+        },
+        "breathing-duration": {
+          "value": 3000,
+          "type": "duration",
+          "description": "Duration for breathing/pulsing glow effect"
+        },
+        "transition-fast": {
+          "value": 150,
+          "type": "duration",
+          "description": "Fast UI transitions (hover states)"
+        },
+        "transition-normal": {
+          "value": 300,
+          "type": "duration",
+          "description": "Normal transitions (parameter changes)"
+        }
+      }
+    },
+    "sizing": {
+      "plugin": {
+        "width": {
+          "value": 640,
+          "type": "dimension",
+          "description": "Default plugin width"
+        },
+        "height": {
+          "value": 480,
+          "type": "dimension",
+          "description": "Default plugin height"
+        },
+        "aspect-ratio": {
+          "value": "4:3",
+          "type": "string",
+          "description": "Maintain classic 4:3 ratio"
+        }
+      },
+      "knob": {
+        "diameter": {
+          "value": 80,
+          "type": "dimension",
+          "description": "Large, tactile knob size"
+        },
+        "stroke-width": {
+          "value": 2,
+          "type": "dimension",
+          "description": "Knob outline thickness"
+        }
+      },
+      "logo": {
+        "height": {
+          "value": 64,
+          "type": "dimension",
+          "description": "Logo silhouette height in UI"
+        },
+        "card-padding": {
+          "value": 16,
+          "type": "dimension",
+          "description": "Padding around logo on its card"
+        }
+      },
+      "transmission": {
+        "height": {
+          "value": 80,
+          "type": "dimension",
+          "description": "Fixed height for transmission area"
+        }
+      }
+    },
+    "layout": {
+      "grid": {
+        "columns": {
+          "value": 4,
+          "type": "number",
+          "description": "4-column grid for knob layout (2x2)"
+        },
+        "gutter": {
+          "value": 32,
+          "type": "dimension",
+          "description": "Space between grid columns"
+        }
+      }
+    }
+  }
+}

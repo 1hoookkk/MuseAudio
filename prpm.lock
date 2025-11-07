@@ -1,0 +1,297 @@
+{
+  "version": "1.0.0",
+  "lockfileVersion": 1,
+  "packages": {
+    "@wshobson/agents/api-scaffolding/backend-architect": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fapi-scaffolding%2Fbackend-architect/1.0.0.tar.gz",
+      "integrity": "sha256-c5592bbfa2d38f976b4b210890684447f960c8e8c81605adbf4da774f33a1638",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/backend-architect.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/api-scaffolding/graphql-architect": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fapi-scaffolding%2Fgraphql-architect/1.0.0.tar.gz",
+      "integrity": "sha256-98c2ada44c65949427c725799f26d733af5b3da8e9bcdf8993265d10eb627f33",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/graphql-architect.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/application-performance/frontend-developer": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fapplication-performance%2Ffrontend-developer/1.0.0.tar.gz",
+      "integrity": "sha256-328b5ac5e751bea91d56c4551bb29964ed6e1ec0f2dfb16a830a59476858e1f9",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/frontend-developer.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/backend-api-security/backend-architect": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fbackend-api-security%2Fbackend-architect/1.0.0.tar.gz",
+      "integrity": "sha256-cb902cacd0ec359cab2e7cc457624594987b10bfbc1fe5879052627c34ce6bb0",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/backend-architect.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/backend-development/backend-architect": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fbackend-development%2Fbackend-architect/1.0.0.tar.gz",
+      "integrity": "sha256-6bfa054ba7d512d5291bb569b0815d39bb8a7c0f7562f03636a4141fa9718e6a",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/backend-architect.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/backend-development/graphql-architect": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fbackend-development%2Fgraphql-architect/1.0.0.tar.gz",
+      "integrity": "sha256-056da5928084c327742dc907662da9936bdc2a7dc458de919f31f6c1b6b291e6",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/graphql-architect.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/blockchain-web3/blockchain-developer": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fblockchain-web3%2Fblockchain-developer/1.0.0.tar.gz",
+      "integrity": "sha256-5499a25b846f909e4d03e713e903844f5718b36aea81f297f62930f5ba79c3b8",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/blockchain-developer.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/cicd-automation/cloud-architect": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fcicd-automation%2Fcloud-architect/1.0.0.tar.gz",
+      "integrity": "sha256-a4047ba78c9155aac054383995ab448fa643752710563b91970badca2963c452",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/cloud-architect.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/cicd-automation/kubernetes-architect": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fcicd-automation%2Fkubernetes-architect/1.0.0.tar.gz",
+      "integrity": "sha256-1bae9ecb6c737dfe916332f226eef27e7ee74899b1faf233fc43f57039dffc69",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/kubernetes-architect.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/cloud-infrastructure/cloud-architect": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fcloud-infrastructure%2Fcloud-architect/1.0.0.tar.gz",
+      "integrity": "sha256-3ba4248bbf59efae7b0ec459f19560c56105e7d242422a26c38112d0e60dc57b",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/cloud-architect.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/cloud-infrastructure/hybrid-cloud-architect": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fcloud-infrastructure%2Fhybrid-cloud-architect/1.0.0.tar.gz",
+      "integrity": "sha256-388fe1329627a12a8279d577f34e11dc23d01b879747cc5966d9f638b1f3e588",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/hybrid-cloud-architect.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/cloud-infrastructure/kubernetes-architect": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fcloud-infrastructure%2Fkubernetes-architect/1.0.0.tar.gz",
+      "integrity": "sha256-8f39df484630a9b51307834a6068cdfe1c3ef20002f199b2ef0234f76bf5e683",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/kubernetes-architect.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/code-documentation/docs-architect": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fcode-documentation%2Fdocs-architect/1.0.0.tar.gz",
+      "integrity": "sha256-504f3a9c621183883254aacbfbc3059e7969b7a4f6b73cebb36309f1d587cda4",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/docs-architect.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/code-review-ai/architect-review": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fcode-review-ai%2Farchitect-review/1.0.0.tar.gz",
+      "integrity": "sha256-f10b379310cb47f42fd0b03ab0e47a26da0ec7d280cebbecde6a2254cf83509b",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/architect-review.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/comprehensive-review/architect-review": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fcomprehensive-review%2Farchitect-review/1.0.0.tar.gz",
+      "integrity": "sha256-c5180ea56d9d13bb6bf3faeb9b47c90c4dfafb17375a27caf9ef085fed34ad1d",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/architect-review.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/data-engineering/backend-architect": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fdata-engineering%2Fbackend-architect/1.0.0.tar.gz",
+      "integrity": "sha256-4330f7c3c603ff3dcb605d2857825aecbcc103cfbbc6626f678a4fe003455dc7",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/backend-architect.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/database-cloud-optimization/backend-architect": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fdatabase-cloud-optimization%2Fbackend-architect/1.0.0.tar.gz",
+      "integrity": "sha256-d6dabab9b31b61147cf2c361c1f2bb176c6b9df305bb4d52a916b72ff7096a48",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/backend-architect.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/database-cloud-optimization/cloud-architect": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fdatabase-cloud-optimization%2Fcloud-architect/1.0.0.tar.gz",
+      "integrity": "sha256-f73f986bb6cbb6d972c2d77e01aea2a85900218796dd090f546906e2e4de84c4",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/cloud-architect.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/database-cloud-optimization/database-architect": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fdatabase-cloud-optimization%2Fdatabase-architect/1.0.0.tar.gz",
+      "integrity": "sha256-6fe07347ec0680aba2037014405c8712464b8f0d2e143c5293ec3659e5538f67",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/database-architect.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    },
+    "@wshobson/agents/database-design/database-architect": {
+      "version": "1.0.0",
+      "resolved": "https://registry.prpm.dev/api/v1/packages/%40wshobson%2Fagents%2Fdatabase-design%2Fdatabase-architect/1.0.0.tar.gz",
+      "integrity": "sha256-ee162144ae073349a8a2861b4457838cf0e902de9b2f36da1d0d8c2dcf1a8b1d",
+      "format": "claude",
+      "subtype": "agent",
+      "installedPath": ".cursor/agents/database-architect.mdc",
+      "fromCollection": {
+        "scope": "collection",
+        "name_slug": "essential-dev-agents",
+        "version": "1.0.0"
+      }
+    }
+  },
+  "generated": "2025-11-05T10:12:00.586Z",
+  "collections": {
+    "@collection/essential-dev-agents": {
+      "scope": "collection",
+      "name_slug": "essential-dev-agents",
+      "version": "1.0.0",
+      "installedAt": "2025-11-05T10:12:00.586Z",
+      "packages": [
+        "@wshobson/agents/api-scaffolding/backend-architect",
+        "@wshobson/agents/api-scaffolding/graphql-architect",
+        "@wshobson/agents/application-performance/frontend-developer",
+        "@wshobson/agents/backend-api-security/backend-architect",
+        "@wshobson/agents/backend-development/backend-architect",
+        "@wshobson/agents/backend-development/graphql-architect",
+        "@wshobson/agents/blockchain-web3/blockchain-developer",
+        "@wshobson/agents/cicd-automation/cloud-architect",
+        "@wshobson/agents/cicd-automation/kubernetes-architect",
+        "@wshobson/agents/cloud-infrastructure/cloud-architect",
+        "@wshobson/agents/cloud-infrastructure/hybrid-cloud-architect",
+        "@wshobson/agents/cloud-infrastructure/kubernetes-architect",
+        "@wshobson/agents/code-documentation/docs-architect",
+        "@wshobson/agents/code-review-ai/architect-review",
+        "@wshobson/agents/comprehensive-review/architect-review",
+        "@wshobson/agents/data-engineering/backend-architect",
+        "@wshobson/agents/database-cloud-optimization/backend-architect",
+        "@wshobson/agents/database-cloud-optimization/cloud-architect",
+        "@wshobson/agents/database-cloud-optimization/database-architect",
+        "@wshobson/agents/database-design/database-architect"
+      ]
+    }
+  }
+}

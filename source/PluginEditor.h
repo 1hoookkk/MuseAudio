@@ -6,7 +6,8 @@
 #include "ui/GenerativeMouth.h"
 #include "ui/TransmissionArea.h"
 #include "ui/StatusBar.h"
-#include "ui/ShapePairSelector.h"
+#include "ui/MuseTransmission.h"  // NEW: Muse's synesthetic personality
+// #include "ui/ShapePairSelector.h"  // REMOVED: Simplified to preset dropdown
 
 //==============================================================================
 /**
@@ -47,6 +48,8 @@ private:
     OLEDLookAndFeel oledLookAndFeel;
 
     // === UI Components ===
+    juce::ComboBox presetSelector;      // NEW: Preset dropdown
+    
     juce::Slider morphKnob;
     juce::Slider intensityKnob;
     juce::Slider mixKnob;
@@ -64,14 +67,16 @@ private:
 
     // === OLED-Specific Components ===
     GenerativeMouth generativeMouth;
+    MuseTransmission museTransmission;  // NEW: Her synesthetic reactions
     TransmissionArea transmissionArea;
     StatusBar statusBar;
-    ShapePairSelector shapePairSelector;
+    // ShapePairSelector shapePairSelector;  // REMOVED: Too confusing
 
     // === Parameter Attachments ===
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> morphAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> intensityAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> pairAttachment;  // Shape pair hidden in dropdown
 
     // === Debug (keyboard-only, no visible buttons) ===
     std::unique_ptr<melatonin::Inspector> inspector;

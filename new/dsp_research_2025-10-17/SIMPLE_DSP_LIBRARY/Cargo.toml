@@ -1,0 +1,24 @@
+[package]
+name = "simple-dsp"
+version = "0.1.0"
+edition = "2021"
+description = "Simple, focused DSP library with EMU-style filters"
+license = "MIT"
+authors = ["DSP Library Team"]
+
+[lib]
+name = "simple_dsp"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# No external dependencies - keep it simple!
+
+[dev-dependencies]
+
+[[example]]
+name = "basic_filter"
+path = "examples/basic_filter.rs"
+
+[[example]]
+name = "simple_synth"
+path = "examples/simple_synth.rs"

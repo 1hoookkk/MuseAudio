@@ -28,3 +28,26 @@ cmake-build-debug
 cmake-build-release
 cmake-build-relwithdebinfo
 packaging/Output/*
+# CMake build tree and local build artifacts
+build/
+*.vst3
+*.clap
+*.exe
+*.dll
+*.pdb
+
+# Archives and large dumps
+*.zip
+*.7z
+*.tar
+*.tar.gz
+
+# Large extracted validation/sample data
+/AUDTY/
+/new/E-MU Sound Sets/
+/docs/validation/xtreme_lead_extracted/
+
+# OS/editor noise
+**/.DS_Store
+.vs/
+.cache/

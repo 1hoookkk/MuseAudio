@@ -1,0 +1,295 @@
+* Executing task: cmake --build build --config Release
+
+MSBuild version 17.14.23+b0019275e for .NET Framework
+
+Checking File Globs
+Generating juce_binarydata_Assets/JuceLibraryCode/BinaryData1.cpp, juce_binarydata_Assets/JuceLibraryCode/Bi
+naryData.h
+Assets.vcxproj -> C:\Muse\MuseAudio\build\Release\Assets.lib
+clap_juce_extensions.vcxproj -> C:\Muse\MuseAudio\build\modules\clap-juce-extensions\Release\clap_juce_exten
+sions.lib
+juce_audio_processors.cpp
+juce_audio_processors_ara.cpp
+juce_audio_processors_lv2_libs.cpp
+juce_gui_extra.cpp
+juce_gui_basics.cpp
+juce_graphics.cpp
+juce_graphics_Harfbuzz.cpp
+juce_events.cpp
+juce_core.cpp
+juce_core_CompilationTime.cpp
+juce_data_structures.cpp
+juce_audio_basics.cpp
+PluginEditor.cpp
+PluginProcessor.cpp
+ZPlaneBodeModel.cpp
+ZPlaneEngineV2.cpp
+ZPlaneShapes.cpp
+melatonin_inspector.cpp
+juce_dsp.cpp
+C:\Muse\MuseAudio\source\PluginProcessor.h(94,29): error C2663: 'std::_Atomic_storage<_Ty,1>::exchange': no ov
+    erloaded function has valid conversion for 'this' pointer [C:\Muse\MuseAudio\build\Muse.vcxproj]
+    C:\Muse\MuseAudio\source\PluginProcessor.h(94,29): error C2663: with [C:\Muse\MuseAudio\build\Muse.vcx
+    proj]
+    C:\Muse\MuseAudio\source\PluginProcessor.h(94,29): error C2663: [ [C:\Muse\MuseAudio\build\Muse.vcxpro
+    j]
+    C:\Muse\MuseAudio\source\PluginProcessor.h(94,29): error C2663: _Ty=bool [C:\Muse\MuseAudio\build\
+    Muse.vcxproj]
+    C:\Muse\MuseAudio\source\PluginProcessor.h(94,29): error C2663: ] [C:\Muse\MuseAudio\build\Muse.vcxpro
+    j]
+    (compiling source file '../source/PluginEditor.cpp')
+    C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\atomic(2211,9)
+    :
+    could be '_Ty std::atomic<_Ty>::exchange(const _Ty,const std::memory_order) noexcept volatile'
+        with
+        [
+        _Ty=bool
+        ]
+        C:\Muse\MuseAudio\source\PluginProcessor.h(94,29):
+        '_Ty std::atomic<_Ty>::exchange(const _Ty,const std::memory_order) noexcept volatile': cannot conver
+            t 'this' pointer from 'const std::atomic<bool>' to 'volatile std::atomic<bool> &'
+                    with
+                    [
+                    _Ty=bool
+                    ]
+                    C:\Muse\MuseAudio\source\PluginProcessor.h(94,16):
+                    Conversion loses qualifiers
+                    C:\Program Files\Microsoft Visual
+                    Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\atomic(725,11)
+                    :
+                    or 'bool std::_Atomic_storage<_Ty,1>::exchange(const bool,const std::memory_order) noexcept'
+                        with
+                        [
+                        _Ty=bool
+                        ]
+                        C:\Muse\MuseAudio\source\PluginProcessor.h(94,29):
+                        'bool std::_Atomic_storage<_Ty,1>::exchange(const bool,const std::memory_order) noexcept':
+                            cannot co
+                            nvert 'this' pointer from 'const std::atomic<bool>' to 'std::atomic<bool> &'
+                                    with
+                                    [
+                                    _Ty=bool
+                                    ]
+                                    C:\Muse\MuseAudio\source\PluginProcessor.h(94,16):
+                                    Conversion loses qualifiers
+                                    C:\Muse\MuseAudio\source\PluginProcessor.h(94,29):
+                                    while trying to match the argument list '(bool, const std::memory_order)'
+
+                                    C:\Muse\MuseAudio\source\ui\OLEDLookAndFeel.h(114,26): warning C4996:
+                                    'juce::Font::Font': Use the constructor
+                                    that takes a FontOptions argument [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                    (compiling source file '../source/PluginEditor.cpp')
+
+                                    C:\Muse\MuseAudio\source\ui\TransmissionArea.h(68,29): warning C4996:
+                                    'juce::Font::Font': Use the constructor
+                                    that takes a FontOptions argument [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                    (compiling source file '../source/PluginEditor.cpp')
+
+                                    C:\Muse\MuseAudio\source\ui\StatusBar.h(84,45): warning C4244: 'initializing':
+                                    conversion from 'ValueType' to
+                                    'float', possible loss of data [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                    C:\Muse\MuseAudio\source\ui\StatusBar.h(84,45): warning C4244: with
+                                    [C:\Muse\MuseAudio\build\Muse.vcxp
+                                    roj]
+                                    C:\Muse\MuseAudio\source\ui\StatusBar.h(84,45): warning C4244: [
+                                    [C:\Muse\MuseAudio\build\Muse.vcxproj
+                                    ]
+                                    C:\Muse\MuseAudio\source\ui\StatusBar.h(84,45): warning C4244: ValueType=int
+                                    [C:\Muse\MuseAudio\bu
+                                    ild\Muse.vcxproj]
+                                    C:\Muse\MuseAudio\source\ui\StatusBar.h(84,45): warning C4244: ]
+                                    [C:\Muse\MuseAudio\build\Muse.vcxproj
+                                    ]
+                                    (compiling source file '../source/PluginEditor.cpp')
+
+                                    C:\Muse\MuseAudio\source\ui\StatusBar.h(84,26): warning C4244: 'initializing':
+                                    conversion from 'ValueType' to
+                                    'const float', possible loss of data [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                    C:\Muse\MuseAudio\source\ui\StatusBar.h(84,26): warning C4244: with
+                                    [C:\Muse\MuseAudio\build\Muse.vcxp
+                                    roj]
+                                    C:\Muse\MuseAudio\source\ui\StatusBar.h(84,26): warning C4244: [
+                                    [C:\Muse\MuseAudio\build\Muse.vcxproj
+                                    ]
+                                    C:\Muse\MuseAudio\source\ui\StatusBar.h(84,26): warning C4244: ValueType=int
+                                    [C:\Muse\MuseAudio\bu
+                                    ild\Muse.vcxproj]
+                                    C:\Muse\MuseAudio\source\ui\StatusBar.h(84,26): warning C4244: ]
+                                    [C:\Muse\MuseAudio\build\Muse.vcxproj
+                                    ]
+                                    (compiling source file '../source/PluginEditor.cpp')
+
+                                    C:\Muse\MuseAudio\source\ui\StatusBar.h(76,29): warning C4996: 'juce::Font::Font':
+                                    Use the constructor that ta
+                                    kes a FontOptions argument [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                    juce_audio_formats.cpp
+                                    (compiling source file '../source/PluginEditor.cpp')
+
+                                    C:\Muse\MuseAudio\source\ui\MuseTransmission.h(105,31): warning C4996:
+                                    'juce::Font::Font': Use the constructor
+                                    that takes a FontOptions argument [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                    (compiling source file '../source/PluginEditor.cpp')
+
+                                    C:\Muse\MuseAudio\source\ui\MuseTransmission.h(130,33): warning C4996:
+                                    'juce::Font::Font': Use the constructor
+                                    that takes a FontOptions argument [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                    (compiling source file '../source/PluginEditor.cpp')
+
+                                    C:\Muse\MuseAudio\source\PluginEditor.cpp(30,33): warning C4996: 'juce::Font::Font':
+                                    Use the constructor that
+                                    takes a FontOptions argument [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                    C:\Muse\MuseAudio\source\PluginEditor.cpp(39,33): warning C4996: 'juce::Font::Font':
+                                    Use the constructor that
+                                    takes a FontOptions argument [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                    juce_audio_utils.cpp
+                                    juce_audio_devices.cpp
+                                    C:\Muse\MuseAudio\source\PluginEditor.cpp(121,35): warning C4996:
+                                    'juce::Font::Font': Use the constructor that
+                                    takes a FontOptions argument [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                    C:\Muse\MuseAudio\source\PluginEditor.cpp(128,35): warning C4996:
+                                    'juce::Font::Font': Use the constructor that
+                                    takes a FontOptions argument [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                    C:\Muse\MuseAudio\source\PluginEditor.cpp(231,27): warning C4996:
+                                    'juce::Font::Font': Use the constructor that
+                                    takes a FontOptions argument [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                    C:\Muse\MuseAudio\source\PluginProcessor.h(94,29): error C2663:
+                                    'std::_Atomic_storage<_Ty,1>::exchange': no ov
+                                        erloaded function has valid conversion for 'this' pointer
+                                        [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                        C:\Muse\MuseAudio\source\PluginProcessor.h(94,29): error C2663: with
+                                        [C:\Muse\MuseAudio\build\Muse.vcx
+                                        proj]
+                                        C:\Muse\MuseAudio\source\PluginProcessor.h(94,29): error C2663: [
+                                        [C:\Muse\MuseAudio\build\Muse.vcxpro
+                                        j]
+                                        C:\Muse\MuseAudio\source\PluginProcessor.h(94,29): error C2663: _Ty=bool
+                                        [C:\Muse\MuseAudio\build\
+                                        Muse.vcxproj]
+                                        C:\Muse\MuseAudio\source\PluginProcessor.h(94,29): error C2663: ]
+                                        [C:\Muse\MuseAudio\build\Muse.vcxpro
+                                        j]
+                                        (compiling source file '../source/PluginProcessor.cpp')
+                                        C:\Program Files\Microsoft Visual
+                                        Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\atomic(2211,9)
+                                        :
+                                        could be '_Ty std::atomic<_Ty>::exchange(const _Ty,const std::memory_order)
+                                            noexcept volatile'
+                                            with
+                                            [
+                                            _Ty=bool
+                                            ]
+                                            C:\Muse\MuseAudio\source\PluginProcessor.h(94,29):
+                                            '_Ty std::atomic<_Ty>::exchange(const _Ty,const std::memory_order) noexcept
+                                                volatile': cannot conver
+                                                t 'this' pointer from 'const std::atomic<bool>' to 'volatile std::atomic
+                                                    <bool> &'
+                                                        with
+                                                        [
+                                                        _Ty=bool
+                                                        ]
+                                                        C:\Muse\MuseAudio\source\PluginProcessor.h(94,16):
+                                                        Conversion loses qualifiers
+                                                        C:\Program Files\Microsoft Visual
+                                                        Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\atomic(725,11)
+                                                        :
+                                                        or 'bool std::_Atomic_storage<_Ty,1>::exchange(const bool,const
+                                                            std::memory_order) noexcept'
+                                                            with
+                                                            [
+                                                            _Ty=bool
+                                                            ]
+                                                            C:\Muse\MuseAudio\source\PluginProcessor.h(94,29):
+                                                            'bool std::_Atomic_storage<_Ty,1>::exchange(const bool,const
+                                                                std::memory_order) noexcept': cannot co
+                                                                nvert 'this' pointer from 'const std::atomic<bool>' to
+                                                                    'std::atomic<bool> &'
+                                                                        with
+                                                                        [
+                                                                        _Ty=bool
+                                                                        ]
+                                                                        C:\Muse\MuseAudio\source\PluginProcessor.h(94,16):
+                                                                        Conversion loses qualifiers
+                                                                        C:\Muse\MuseAudio\source\PluginProcessor.h(94,29):
+                                                                        while trying to match the argument list '(bool,
+                                                                        const std::memory_order)'
+
+                                                                        C:\Muse\MuseAudio\source\ui\SeanceLookAndFeel.h(68,26):
+                                                                        warning C4996: 'juce::Font::Font': Use the
+                                                                        constructor
+                                                                        that takes a FontOptions argument
+                                                                        [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                                                        (compiling source file
+                                                                        '../source/PluginProcessor.cpp')
+
+                                                                        C:\Muse\MuseAudio\source\ui\FloatingWord.h(85,29):
+                                                                        warning C4996: 'juce::Font::Font': Use the
+                                                                        constructor that
+                                                                        takes a FontOptions argument
+                                                                        [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                                                        (compiling source file
+                                                                        '../source/PluginProcessor.cpp')
+
+                                                                        C:\Muse\MuseAudio\source\ui\FloatingWord.h(90,29):
+                                                                        warning C4996: 'juce::Font::Font': Use the
+                                                                        constructor that
+                                                                        takes a FontOptions argument
+                                                                        [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                                                        (compiling source file
+                                                                        '../source/PluginProcessor.cpp')
+
+                                                                        C:\Muse\MuseAudio\source\ui\FloatingWord.h(131,13):
+                                                                        error C2360: initialization of 'holdFrames' is
+                                                                        skipped by
+                                                                        'case' label
+                                                                        [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                                                        (compiling source file
+                                                                        '../source/PluginProcessor.cpp')
+                                                                        C:\Muse\MuseAudio\source\ui\FloatingWord.h(124,21):
+                                                                        see declaration of 'holdFrames'
+
+                                                                        C:\Muse\MuseAudio\source\ui\FloatingWord.h(141,13):
+                                                                        error C2360: initialization of 'holdFrames' is
+                                                                        skipped by
+                                                                        'case' label
+                                                                        [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                                                        (compiling source file
+                                                                        '../source/PluginProcessor.cpp')
+                                                                        C:\Muse\MuseAudio\source\ui\FloatingWord.h(124,21):
+                                                                        see declaration of 'holdFrames'
+
+                                                                        C:\Muse\MuseAudio\source\SeanceEditor.h(54,37):
+                                                                        warning C4996: 'juce::Font::Font': Use the
+                                                                        constructor that ta
+                                                                        kes a FontOptions argument
+                                                                        [C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                                                        (compiling source file
+                                                                        '../source/PluginProcessor.cpp')
+
+                                                                        C:\Muse\MuseAudio\source\SeanceEditor.h(103,33):
+                                                                        error C2653: 'BinaryData': is not a class or
+                                                                        namespace name [
+                                                                        C:\Muse\MuseAudio\build\Muse.vcxproj]
+                                                                        (compiling source file
+                                                                        '../source/PluginProcessor.cpp')
+
+                                                                        C:\Muse\MuseAudio\source\SeanceEditor.h(103,45):
+                                                                        error C3861: 'getNamedResource': identifier not
+                                                                        found [C:\Mus
+                                                                        e\MuseAudio\build\Muse.vcxproj]
+                                                                        (compiling source file
+                                                                        '../source/PluginProcessor.cpp')
+
+                                                                        Muse_rc_lib.vcxproj ->
+                                                                        C:\Muse\MuseAudio\build\Muse_rc_lib.dir\Release\Muse_rc_lib.lib
+                                                                        Building Custom Rule
+                                                                        C:/Muse/MuseAudio/CMakeLists.txt
+                                                                        juce_VST3ManifestHelper.cpp
+                                                                        Muse_vst3_helper.vcxproj ->
+                                                                        C:\Muse\MuseAudio\build\Release\Muse_vst3_helper.exe
+
+                                                                        * The terminal process "C:\Program
+                                                                        Files\Git\bin\bash.exe '--login', '-i', '-c',
+                                                                        'cmake --build build --config Release'"
+                                                                        terminated with exit code: 1.
+                                                                        * Terminal will be reused by tasks, press any
+                                                                        key to close it.

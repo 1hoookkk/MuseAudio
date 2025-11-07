@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Muse Audio Plugin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #18191a;
+            font-family: 'Inter', sans-serif;
+        }
+        .knob-container {
+            position: relative;
+            width: 72px;
+            height: 72px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .knob-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 9999px;
+            background: linear-gradient(145deg, #325555, #2c4949);
+            box-shadow: inset 2px 2px 4px #263e3e, inset -2px -2px 4px #385f5f, 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .knob-indicator-track {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: rotate(-135deg);
+        }
+        .knob-indicator-dot {
+            width: 4px;
+            height: 4px;
+            background-color: #d8f3dc;
+            border-radius: 9999px;
+            position: absolute;
+            top: 6px;
+            box-shadow: 0 0 2px rgba(216, 243, 220, 0.4), 0 0 5px rgba(216, 243, 220, 0.3);
+        }
+        .knob-center {
+            position: relative;
+            width: 80%;
+            height: 80%;
+            border-radius: 9999px;
+            background: #2F4F4F;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .knob-line-indicator {
+            width: 2px;
+            height: 12px;
+            background-color: #d8f3dc;
+            position: absolute;
+            top: 6px;
+            border-radius: 1px;
+            box-shadow: 0 0 2px rgba(216, 243, 220, 0.4), 0 0 5px rgba(216, 243, 220, 0.3);
+        }
+        .oled-glow {
+            color: #d8f3dc;
+            text-shadow: 0 0 2px rgba(216, 243, 220, 0.4), 0 0 5px rgba(216, 243, 220, 0.3), 0 0 8px rgba(216, 243, 220, 0.2);
+        }
+        .oled-glow-subtle {
+            text-shadow: 0 0 1px rgba(216, 243, 220, 0.3), 0 0 3px rgba(216, 243, 220, 0.2);
+        }
+        .oled-element-glow {
+            box-shadow: 0 0 2px rgba(216, 243, 220, 0.4), 0 0 5px rgba(216, 243, 220, 0.3), 0 0 8px rgba(216, 243, 220, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-background-dark">
+<div class="w-[400px] h-[600px] bg-[#2F4F4F] rounded-sm shadow-2xl flex flex-col p-6 font-display text-[#d8f3dc]">
+<div class="text-center mb-4">
+<h1 class="text-[16px] font-bold tracking-[0.2em] oled-glow">MUSE</h1>
+</div>
+<div class="w-full h-[150px] bg-black rounded-sm mb-6 flex items-center justify-center p-4 shadow-inner">
+<div class="w-full h-full" data-alt="Neutral LED matrix mouth graphic, consisting of a horizontal line of pale mint green glowing dots on a black background.">
+<div class="flex items-center justify-center h-full">
+<div class="w-full h-0.5 bg-[#d8f3dc] oled-element-glow"></div>
+</div>
+</div>
+</div>
+<div class="flex-grow flex flex-col justify-center gap-8 px-2">
+<div class="flex justify-around">
+<div class="flex flex-col items-center gap-2">
+<p class="text-sm font-semibold tracking-widest oled-glow">MORPH</p>
+<div class="knob-container">
+<div class="knob-bg"></div>
+<div class="knob-indicator-track" style="transform: rotate(-200deg);">
+<div class="knob-indicator-dot"></div>
+</div>
+<div class="knob-center">
+<div class="knob-line-indicator"></div>
+</div>
+</div>
+<p class="text-xs font-mono oled-glow">0.0</p>
+</div>
+<div class="flex flex-col items-center gap-2">
+<p class="text-sm font-semibold tracking-widest oled-glow">INTENSITY</p>
+<div class="knob-container">
+<div class="knob-bg"></div>
+<div class="knob-indicator-track" style="transform: rotate(-200deg);">
+<div class="knob-indicator-dot"></div>
+</div>
+<div class="knob-center">
+<div class="knob-line-indicator"></div>
+</div>
+</div>
+<p class="text-xs font-mono oled-glow">0.0</p>
+</div>
+</div>
+<div class="flex justify-center">
+<div class="flex flex-col items-center gap-2">
+<p class="text-sm font-semibold tracking-widest oled-glow">MIX</p>
+<div class="knob-container">
+<div class="knob-bg"></div>
+<div class="knob-indicator-track" style="transform: rotate(-200deg);">
+<div class="knob-indicator-dot"></div>
+</div>
+<div class="knob-center">
+<div class="knob-line-indicator"></div>
+</div>
+</div>
+<p class="text-xs font-mono oled-glow">0.0</p>
+</div>
+</div>
+</div>
+<div class="mt-auto pt-6 flex flex-col items-center gap-4">
+<div class="w-full h-8 border-t border-[#3A5A5A] shadow-[0_-1px_3px_rgba(216,243,220,0.1)]"></div>
+<p class="text-[10px] opacity-50 tracking-wider oled-glow-subtle">AUDIOFABRICA V 1.0</p>
+</div>
+</div>
+</body></html>

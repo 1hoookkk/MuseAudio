@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MUSE Audio Plugin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#b1c4bf",
+            "background-light": "#f7f7f7",
+            "background-dark": "#21363A",
+          },
+          fontFamily: {
+            "display": ["Space Grotesk", "sans-serif"]
+          },
+          borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+        },
+      },
+    }
+  </script>
+<style type="text/tailwindcss">
+    @layer utilities {
+      .glow {
+        text-shadow: 0 0 5px theme('colors.primary/0.5');
+      }
+      .icon-glow {
+        filter: drop-shadow(0 0 3px theme('colors.primary/0.5'));
+      }
+      .led-matrix {
+        font-family: 'Courier New', Consolas, monospace;
+        line-height: 1;
+        white-space: pre;
+        letter-spacing: 0;
+      }
+    }
+  </style>
+</head>
+<body class="bg-neutral-900 flex items-center justify-center min-h-screen font-display antialiased">
+<div class="relative w-[400px] h-[600px] flex flex-col bg-background-dark text-primary rounded-lg shadow-2xl overflow-hidden border border-primary/10">
+
+<!-- Header -->
+<header class="flex items-center justify-between px-5 py-3 border-b border-primary/10">
+<div class="flex items-center gap-3">
+<svg class="w-4 h-4 text-primary icon-glow" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 42.4379C4 42.4379 14.0962 36.0744 24 41.1692C35.0664 46.8624 44 42.2078 44 42.2078L44 7.01134C44 7.01134 35.068 11.6577 24.0031 5.96913C14.0971 0.876274 4 7.27094 4 7.27094L4 42.4379Z" fill="currentColor"></path>
+</svg>
+<h2 class="text-sm font-bold glow">MUSE</h2>
+<a class="text-xs font-medium glow" href="#">&lt; Vowel Pair &gt;</a>
+</div>
+<button class="flex items-center justify-center">
+<span class="material-symbols-outlined text-xl text-primary icon-glow">settings</span>
+</button>
+</header>
+
+<!-- Main Content Area -->
+<main class="flex-grow flex flex-col p-5 space-y-5">
+
+<!-- Shape Selector -->
+<div class="flex h-10 items-center justify-center rounded-lg bg-[#141b1d] p-1 gap-0.5">
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-md px-2 has-[:checked]:bg-primary/10 text-primary/70 has-[:checked]:text-primary text-[11px] font-bold uppercase tracking-wider has-[:checked]:glow transition-all">
+<span class="truncate">VOWEL</span>
+<input class="invisible w-0" name="shape-selector" type="radio" value="VOWEL"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-md px-2 has-[:checked]:bg-primary/10 text-primary/70 has-[:checked]:text-primary text-[11px] font-bold uppercase tracking-wider has-[:checked]:glow transition-all">
+<span class="truncate">BELL</span>
+<input class="invisible w-0" name="shape-selector" type="radio" value="BELL"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-md px-2 has-[:checked]:bg-primary/10 text-primary/70 has-[:checked]:text-primary text-[11px] font-bold uppercase tracking-wider has-[:checked]:glow transition-all">
+<span class="truncate">LOW</span>
+<input checked="" class="invisible w-0" name="shape-selector" type="radio" value="LOW"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-md px-2 has-[:checked]:bg-primary/10 text-primary/70 has-[:checked]:text-primary text-[11px] font-bold uppercase tracking-wider has-[:checked]:glow transition-all">
+<span class="truncate">SUB</span>
+<input class="invisible w-0" name="shape-selector" type="radio" value="SUB"/>
+</label>
+</div>
+
+<!-- OLED Visualizer with LED Matrix Mouth -->
+<div class="flex items-center justify-center bg-black rounded-md shadow-[inset_0_3px_6px_rgba(0,0,0,0.8)] p-6 h-[140px]">
+<div class="flex items-center justify-center text-primary glow led-matrix" style="font-size: 11px;">
+<div class="inline-block text-center">░░░░░░░░░░░░░░░░░░░░
+░░░░░░░░░░░░░░░░░░░░
+░░░░░░░░░░░░░░░░░░░░
+░░░░░░░░░░░░░░░░░░░░
+░░░░░░░░░░░░░░░░░░░░
+░░░██████████████░░░░
+░░░██████████████░░░░
+░░░░░░░░░░░░░░░░░░░░
+░░░░░░░░░░░░░░░░░░░░
+░░░░░░░░░░░░░░░░░░░░</div>
+</div>
+</div>
+
+<!-- Knobs -->
+<div class="grid grid-cols-3 gap-6 px-2 py-2">
+<!-- MORPH -->
+<div class="flex flex-col items-center space-y-3">
+<div class="relative w-20 h-20 rounded-full bg-[#182629] border-2 border-primary/40 flex items-center justify-center cursor-pointer transition-all hover:border-primary/60" style="box-shadow: 0 0 8px rgba(177, 196, 191, 0.1);">
+<div class="absolute w-1.5 h-4 bg-primary/60 rounded-full" style="filter: drop-shadow(0 0 2px rgba(177, 196, 191, 0.4)); transform: translateY(-28px);"></div>
+</div>
+<h2 class="text-[11px] font-bold uppercase tracking-wider text-primary/70">MORPH</h2>
+</div>
+<!-- INTENSITY -->
+<div class="flex flex-col items-center space-y-3">
+<div class="relative w-20 h-20 rounded-full bg-[#182629] border-2 border-primary/40 flex items-center justify-center cursor-pointer transition-all hover:border-primary/60" style="box-shadow: 0 0 8px rgba(177, 196, 191, 0.1);">
+<div class="absolute w-1.5 h-4 bg-primary/60 rounded-full" style="filter: drop-shadow(0 0 2px rgba(177, 196, 191, 0.4)); transform: translateY(-28px);"></div>
+</div>
+<h2 class="text-[11px] font-bold uppercase tracking-wider text-primary/70">INTENSITY</h2>
+</div>
+<!-- MIX -->
+<div class="flex flex-col items-center space-y-3">
+<div class="relative w-20 h-20 rounded-full bg-[#182629] border-2 border-primary/40 flex items-center justify-center cursor-pointer transition-all hover:border-primary/60" style="box-shadow: 0 0 8px rgba(177, 196, 191, 0.1);">
+<div class="absolute w-1.5 h-4 bg-primary/60 rounded-full" style="filter: drop-shadow(0 0 2px rgba(177, 196, 191, 0.4)); transform: translateY(-28px);"></div>
+</div>
+<h2 class="text-[11px] font-bold uppercase tracking-wider text-primary/70">MIX</h2>
+</div>
+</div>
+
+<!-- Transmission Card -->
+<div class="flex-grow flex items-center justify-start px-1 py-2">
+<div class="w-full rounded-lg bg-[#141b1d] px-5 py-4 border border-primary/5">
+<p class="text-primary text-base font-medium leading-relaxed tracking-wide glow">Muse...</p>
+</div>
+</div>
+
+</main>
+
+<!-- Footer Status Bar -->
+<footer class="bg-background-dark text-primary/80 border-t border-primary/10 px-5 py-2.5 text-center">
+<p class="text-[10px] font-medium tracking-widest glow opacity-90">POLE RADIUS: 0.500 | STABLE | CPU: 8%</p>
+</footer>
+
+</div>
+</body></html>

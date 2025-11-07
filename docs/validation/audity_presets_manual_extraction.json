@@ -1,0 +1,100 @@
+{
+    "source": "E-MU Audity 2000 Hardware",
+    "extraction_date": "2025-11-07",
+    "notes": "Manually extracted Z-plane filter parameters for validation testing",
+    "presets": [
+        {
+            "name": "Whisper",
+            "file": "03_0079_Whisper.syx",
+            "bank": 3,
+            "number": 79,
+            "description": "Subtle smooth filtering - good for gentle morph test",
+            "filter": {
+                "morph": null,
+                "resonance": null,
+                "mix_percent": null
+            },
+            "modulation": {
+                "env_to_morph": null,
+                "env_attack": null,
+                "env_decay": null,
+                "lfo_to_morph": null,
+                "lfo_rate": null
+            },
+            "test_purpose": "Baseline subtle filtering"
+        },
+        {
+            "name": "REZANATOR",
+            "file": "00_0036_REZANATOR.syx",
+            "bank": 0,
+            "number": 36,
+            "description": "High resonance self-oscillation - tests extreme Q",
+            "filter": {
+                "morph": null,
+                "resonance": null,
+                "mix_percent": null
+            },
+            "modulation": {
+                "env_to_morph": null,
+                "lfo_to_morph": null
+            },
+            "test_purpose": "Extreme resonance edge case"
+        },
+        {
+            "name": "Acidic",
+            "file": "00_0126_Acidic.syx",
+            "bank": 0,
+            "number": 126,
+            "description": "Classic acid sound - tests morph + resonance combo",
+            "filter": {
+                "morph": null,
+                "resonance": null,
+                "mix_percent": null
+            },
+            "modulation": {
+                "env_to_morph": null,
+                "env_attack": null,
+                "env_decay": null
+            },
+            "test_purpose": "Musical validation - iconic EMU sound"
+        },
+        {
+            "name": "Acidline",
+            "file": "01_0029_Acidline.syx",
+            "bank": 1,
+            "number": 29,
+            "description": "Acid bass variant - tests sustained resonance",
+            "filter": {
+                "morph": null,
+                "resonance": null,
+                "mix_percent": null
+            },
+            "modulation": {
+                "env_to_morph": null
+            },
+            "test_purpose": "Sustained resonance stability"
+        },
+        {
+            "name": "AcidBlomp",
+            "file": "03_0100_AcidBlomp.syx",
+            "bank": 3,
+            "number": 100,
+            "description": "Extreme bass + resonance - tests low-freq behavior",
+            "filter": {
+                "morph": null,
+                "resonance": null,
+                "mix_percent": null
+            },
+            "modulation": {
+                "env_to_morph": null
+            },
+            "test_purpose": "Low frequency + high resonance edge case"
+        }
+    ],
+    "validation_methodology": {
+        "test_signal": "Pink noise or simple drum loop",
+        "comparison_method": "Phase inversion (null test)",
+        "success_criteria": "Residual < -40dB RMS",
+        "tools": "Audacity or iZotope RX"
+    }
+}

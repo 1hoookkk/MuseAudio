@@ -1,0 +1,36 @@
+[package]
+name = "dsp-plugin-ready"
+version = "1.0.0"
+edition = "2021"
+description = "Production-ready DSP library for audio plugins"
+license = "MIT"
+authors = ["DSP Plugin Team"]
+
+[lib]
+name = "dsp_plugin"
+crate-type = ["cdylib", "rlib", "staticlib"]
+
+[dependencies]
+# Zero dependencies - maximum compatibility
+
+[features]
+default = ["c-api"]
+c-api = []
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.dev]
+opt-level = 1
+panic = "abort"
+
+[[example]]
+name = "basic_filter"
+path = "examples/basic_filter.rs"
+
+[[example]]
+name = "plugin_integration"
+path = "examples/plugin_integration.rs"

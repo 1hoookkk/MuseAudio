@@ -1,0 +1,10 @@
+^C:\FIELDENGINEBUNDLE\ENGINEBUNDLE\BUILD-ENGINE_FIELD\CMAKEFILES\200A5679EE2FEA2173EB85F93E4E5464\GENERATE.STAMP.RULE
+setlocal
+C:\Users\hooki\AppData\Local\Programs\Python\Python310\Lib\site-packages\cmake\data\bin\cmake.exe -SC:/fieldEngineBundle/enginebundle -BC:/fieldEngineBundle/enginebundle/build-engine_field --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/fieldEngineBundle/enginebundle/build-engine_field/FieldEngineSuite.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
