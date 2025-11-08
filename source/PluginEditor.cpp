@@ -43,8 +43,8 @@ PluginEditor::PluginEditor (PluginProcessor& p)
     };
 
     setupLabel(morphLabel, "MORPH");
-    setupLabel(intensityLabel, "INTENSITY");
-    setupLabel(mixLabel, "MIX");
+    setupLabel(intensityLabel, "HAUNT");
+    setupLabel(mixLabel, "FOCUS");
 
     setupValueLabel(morphValue);
     setupValueLabel(intensityValue);
@@ -63,8 +63,8 @@ PluginEditor::PluginEditor (PluginProcessor& p)
     addAndMakeVisible(statusBar);
 
     // === Setup Preset Selector (NEW: Simplified UI) ===
-    presetSelector.setTextWhenNothingSelected("-- Select Preset --");
-    presetSelector.setTextWhenNoChoicesAvailable("(No presets available)");
+    presetSelector.setTextWhenNothingSelected("Make your choice.");
+    presetSelector.setTextWhenNoChoicesAvailable("Nothing here.");
     
     // Add initial preset categories
     presetSelector.addItem("INIT - Neutral", 1);

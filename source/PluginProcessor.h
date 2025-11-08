@@ -127,6 +127,9 @@ private:
     double lastUtteranceTime_ = 0.0;
     double nextUtteranceDelay_ = 60.0;  // Random 30-90 seconds
 
+    // Instance-specific random generator (thread-safe usage from prepareToPlay)
+    juce::Random instanceRandom_;
+
     struct SpectralFeatures
     {
         float peakFrequency = 0.0f;      // Strongest resonance (Hz)
