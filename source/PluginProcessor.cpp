@@ -1,5 +1,5 @@
 #include "PluginProcessor.h"
-#include "SeanceEditor.h"
+#include "PluginEditor.h"
 #include <algorithm>
 
 //==============================================================================
@@ -20,13 +20,13 @@ static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "intensity",
-        "Intensity",
+        "Haunt", // Display name (ID kept as 'intensity' for backward compatibility)
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
         0.0f));  // Start transparent - Muse observes before acting
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "mix",
-        "Mix",
+        "Focus", // Display name (ID kept as 'mix' for backward compatibility)
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
         1.0f));
 
@@ -158,9 +158,8 @@ void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     lastAnalysisTime_ = 0.0;
     lastUtteranceTime_ = 0.0;
 
-    // Randomize first utterance delay (30-90 seconds)
-    auto& random = juce::Random::getSystemRandom();
-    nextUtteranceDelay_ = 30.0 + random.nextFloat() * 60.0;  // 30-90 sec
+    // Randomize first utterance delay (30-90 seconds) using instance RNG (thread-safe)
+    nextUtteranceDelay_ = 30.0 + instanceRandom_.nextFloat() * 60.0;  // 30-90 sec
 }
 
 void PluginProcessor::releaseResources()
@@ -407,7 +406,8 @@ bool PluginProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* PluginProcessor::createEditor()
 {
-    return new SeanceEditor (*this);
+    // Provide the Brutalist Temple PluginEditor UI
+    return new PluginEditor(*this);
 }
 
 //==============================================================================

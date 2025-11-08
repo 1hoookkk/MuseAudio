@@ -2,6 +2,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "OLEDLookAndFeel.h"
+#include "ui/themes/Theme.h"
 
 /**
  * ShapePairSelector - 4-button shape selector for Z-plane filter pairs
@@ -27,10 +28,10 @@ public:
             button->setRadioGroupId(1001, juce::dontSendNotification);
 
             // Custom colors for OLED aesthetic
-            button->setColour(juce::TextButton::buttonColourId, juce::Colour(0xFF141b1d));
-            button->setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xFF1a2528));
-            button->setColour(juce::TextButton::textColourOffId, juce::Colour(OLEDLookAndFeel::MintGreen).withAlpha(0.5f));
-            button->setColour(juce::TextButton::textColourOnId, juce::Colour(OLEDLookAndFeel::MintGreen));
+            button->setColour(juce::TextButton::buttonColourId, ModernMuseTheme::panelBackground);
+            button->setColour(juce::TextButton::buttonOnColourId, ModernMuseTheme::panelBackgroundActive);
+            button->setColour(juce::TextButton::textColourOffId, ModernMuseTheme::mintGreen.withAlpha(0.5f));
+            button->setColour(juce::TextButton::textColourOnId, ModernMuseTheme::mintGreen);
 
             button->onClick = [this, i]() { onButtonClicked(i); };
 
@@ -74,7 +75,7 @@ public:
             if (button->getToggleState())
             {
                 // Draw glow effect for selected button
-                g.setColour(juce::Colour(OLEDLookAndFeel::MintGreen).withAlpha(0.2f));
+                g.setColour(ModernMuseTheme::mintGreen.withAlpha(0.2f));
                 g.fillRoundedRectangle(buttonBounds.expanded(2.0f), 2.0f);
             }
         }

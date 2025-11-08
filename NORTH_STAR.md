@@ -18,18 +18,14 @@ This document defines what Muse **is right now** and where it's going next.
 ## The Aesthetic: "OLED Séance"
 
 ### Core Identity
-- **Dark, brutalist hardware aesthetic** from the 80s/90s
+- **Digital Rompler hardware aesthetic** from the 90s
 - **Retro OLED display** showing a procedurally-generated mouth
-- **Mint green phosphor glow** (#d8f3dc) on pure black (#000000)
 - **No gradients, no warmth**—just cold, precise, beautiful light
 
 ### The Mouth
 This is the soul of the plugin. A **16×6 grid of glowing LED points** that form mouth shapes in real-time.
 
-**What it looks like:**
-- Individual circular LEDs with 15% gaps between them
-- Each LED has a radial glow (mint green core fading to transparent)
-- The pattern forms recognizable mouth shapes (open vowel, wide smile, tight circle, etc.)
+
 - **10 FPS animation**—it snaps between states like old hardware, not smooth 60fps
 - Organic imperfections: 3-5% of LEDs flicker randomly, asymmetry, breathing sparkles
 

@@ -3,6 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <atomic>
 #include <array>
+#include "ui/themes/Theme.h"
 
 /**
  * SynestheticWord - Sparse Floating Ghost Words (JUCE 8 Best Practice)
@@ -252,8 +253,8 @@ private:
 
     void paintGhostWord(juce::Graphics& g, juce::Point<float> position)
     {
-        // Soft lilac ghost text (#B8A4C9)
-        auto lilac = juce::Colour(0xffB8A4C9);
+        // Soft lilac ghost text
+        auto lilac = SeanceTheme::accentLilac;
         
         // Calculate visible substring based on reveal state
         juce::String visibleText = currentWord_;
@@ -294,7 +295,7 @@ private:
     void paintUrgentWord(juce::Graphics& g, juce::Point<float> position)
     {
         // Urgent words: Sharp white, high contrast
-        auto white = juce::Colours::white;
+        auto white = SeanceTheme::white;
         
         juce::String visibleText = currentWord_;
         if (currentState_ == State::Revealing)

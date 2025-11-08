@@ -1,6 +1,7 @@
 #pragma once
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "SeanceColors.h"
+#include "ui/themes/Theme.h"
 #include <vector>
 #include <random>
 
@@ -72,13 +73,13 @@ public:
         if (currentPhase == AnimationPhase::Idle)
             return;
         
-        using namespace Muse::Colors;
+        using namespace SeanceTheme;
         
         // Calculate current visible text
         juce::String visibleText = fullMessage.substring(0, revealedCharCount);
         
         // Apply fade alpha
-        auto textColor = FloatingText.withAlpha(fadeAlpha);
+        auto textColor = textPrimary.withAlpha(fadeAlpha);
         
         // Draw with subtle glow
         g.setColour(textColor.withAlpha(fadeAlpha * 0.3f));

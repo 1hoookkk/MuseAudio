@@ -1,6 +1,7 @@
 #pragma once
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "OLEDLookAndFeel.h"
+#include "ui/themes/Theme.h"
 
 /**
  * OLEDScreen - Simple audio-reactive line visualization
@@ -55,7 +56,7 @@ public:
     void paint(juce::Graphics& g) override
     {
         // Black OLED background
-        g.fillAll(juce::Colours::black);
+        g.fillAll(ModernMuseTheme::trueBlack);
         
         // Get current values atomically
         const float level = audioLevel.load();
@@ -74,7 +75,7 @@ public:
         const float verticalOffset = (morph - 0.5f) * 20.0f; // ±10px based on morph
         
         // Create mint green color with brightness
-        auto baseColor = juce::Colour(OLEDLookAndFeel::MintGreen);
+        auto baseColor = ModernMuseTheme::mintGreen;
         auto lineColor = baseColor.withBrightness(brightness);
         
         // Draw glow effect for active audio

@@ -1,6 +1,7 @@
 #pragma once
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "OLEDLookAndFeel.h"
+#include "ui/themes/Theme.h"
 
 /**
  * StatusBar - Real-time status information
@@ -51,11 +52,11 @@ public:
         auto bounds = getLocalBounds();
         
         // Dark background with top border
-        g.setColour(juce::Colour(0xFF2F4F4F));
+        g.setColour(ModernMuseTheme::oledDarkTeal);
         g.fillRect(bounds);
         
         // Top border line
-        g.setColour(juce::Colour(OLEDLookAndFeel::MintGreen).withAlpha(0.2f));
+        g.setColour(ModernMuseTheme::mintGreen.withAlpha(0.2f));
         g.drawHorizontalLine(0, 0.0f, static_cast<float>(bounds.getWidth()));
         
         // Get current values
@@ -72,7 +73,7 @@ public:
         );
         
         // Draw status text with OLED styling
-        g.setColour(juce::Colour(OLEDLookAndFeel::MintGreen).withAlpha(0.8f));
+        g.setColour(ModernMuseTheme::mintGreen.withAlpha(0.8f));
         g.setFont(juce::Font("Space Grotesk", 10.0f, juce::Font::plain));
         
         // Center text vertically
@@ -87,11 +88,11 @@ public:
         if (stable)
         {
             // Green glowing dot for stable
-            g.setColour(juce::Colour(0xFF00FF00).withAlpha(0.8f));
+            g.setColour(ModernMuseTheme::statusGreen.withAlpha(0.8f));
             g.fillEllipse(dotX - dotRadius, dotY - dotRadius, dotRadius * 2, dotRadius * 2);
             
             // Glow effect
-            g.setColour(juce::Colour(0xFF00FF00).withAlpha(0.3f));
+            g.setColour(ModernMuseTheme::statusGreen.withAlpha(0.3f));
             g.fillEllipse(dotX - dotRadius * 2, dotY - dotRadius * 2, dotRadius * 4, dotRadius * 4);
         }
         else
@@ -100,7 +101,7 @@ public:
             static bool blinkState = false;
             if ((juce::Time::getMillisecondCounter() / 500) % 2 == 0)
             {
-                g.setColour(juce::Colour(0xFFFF0000).withAlpha(0.8f));
+                g.setColour(ModernMuseTheme::statusRed.withAlpha(0.8f));
                 g.fillEllipse(dotX - dotRadius, dotY - dotRadius, dotRadius * 2, dotRadius * 2);
             }
         }

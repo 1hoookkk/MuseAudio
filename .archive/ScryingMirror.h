@@ -3,6 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_opengl/juce_opengl.h>
 #include <atomic>
+#include "ui/themes/Theme.h"
 
 /**
  * ScryingMirror - The Obsidian Portal (JUCE 8 Best Practice)
@@ -68,8 +69,8 @@ public:
     {
         auto bounds = getLocalBounds().toFloat();
 
-        // === 1. Deep Obsidian Background (#1a1a1a) ===
-        g.setColour(juce::Colour(0xff1a1a1a));
+        // === 1. Deep Obsidian Background ===
+        g.setColour(SeanceTheme::obsidian);
         g.fillRoundedRectangle(bounds, 8.0f);
 
         // === 2. Procedural Noise Texture ===
@@ -144,7 +145,7 @@ private:
             // Pulse with heartbeat
             alpha *= (1.0f + currentHeartbeatIntensity_ * 0.5f);
 
-            g.setColour(juce::Colours::white.withAlpha(alpha));
+            g.setColour(SeanceTheme::textPrimary.withAlpha(alpha));
             g.fillEllipse(x - 0.5f, y - 0.5f, 1.0f, 1.0f);
         }
     }
@@ -156,7 +157,7 @@ private:
         float breathIntensity = 0.1f + (std::sin(animationPhase_) * 0.05f);
         
         // Subtle lilac color (#B8A4C9 with low alpha)
-        auto glowColor = juce::Colour(0xffB8A4C9).withAlpha(breathIntensity);
+        auto glowColor = SeanceTheme::accentLilac.withAlpha(breathIntensity);
 
         // Draw soft edge gradient (inner shadow style)
         juce::ColourGradient gradient(
@@ -184,7 +185,7 @@ private:
             float width = 10.0f + random.nextFloat() * 30.0f;
             float x = bounds.getX() + random.nextFloat() * (bounds.getWidth() - width);
 
-            g.setColour(juce::Colours::white.withAlpha(0.15f));
+            g.setColour(SeanceTheme::textPrimary.withAlpha(0.15f));
             g.drawLine(x, y, x + width, y, 1.0f);
         }
     }
@@ -208,7 +209,7 @@ private:
                 float offset = (random.nextFloat() - 0.5f) * 20.0f;
 
                 // Draw displaced band with chromatic aberration
-                g.setColour(juce::Colour(0xffFF00FF).withAlpha(0.3f));  // Magenta
+                g.setColour(ModernMuseTheme::accentPeach.withAlpha(0.3f));
                 g.fillRect(bounds.getX() + offset, y, bounds.getWidth(), bandHeight);
             }
         }
@@ -216,7 +217,7 @@ private:
         // Add scan lines
         for (int y = 0; y < bounds.getHeight(); y += 4)
         {
-            g.setColour(juce::Colours::black.withAlpha(0.2f));
+            g.setColour(ModernMuseTheme::trueBlack.withAlpha(0.2f));
             g.drawLine(bounds.getX(), bounds.getY() + y, bounds.getRight(), bounds.getY() + y, 1.0f);
         }
     }

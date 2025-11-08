@@ -77,7 +77,7 @@ public:
     
     std::atomic<int> currentMuseState_ {static_cast<int>(MuseState::Flow)};
     std::atomic<float> maxPoleRadius_ {0.0f};      // Maximum pole radius this block
-    std::atomic<bool> nanDetected_ {false};         // NaN/Inf detected flag
+    mutable std::atomic<bool> nanDetected_ {false}; // NaN/Inf detected flag (mutable for const getter)
     
     MuseState getMuseState() const
     {
@@ -126,6 +126,9 @@ private:
     double lastAnalysisTime_ = 0.0;
     double lastUtteranceTime_ = 0.0;
     double nextUtteranceDelay_ = 60.0;  // Random 30-90 seconds
+
+    // Instance-specific random generator (thread-safe usage from prepareToPlay)
+    juce::Random instanceRandom_;
 
     struct SpectralFeatures
     {

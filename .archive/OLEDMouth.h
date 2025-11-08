@@ -1,6 +1,7 @@
 #pragma once
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "OLEDLookAndFeel.h"
+#include "ui/themes/Theme.h"
 
 /**
  * OLEDMouth - Audio‑reactive vector mouth (AA/AH/EE/OH/OO)
@@ -87,12 +88,12 @@ public:
         mouth.closeSubPath();
 
         // Inner opening fill (OLED black) to emphasize a real mouth
-        g.setColour(juce::Colours::black);
+        g.setColour(ModernMuseTheme::trueBlack);
         g.fillPath(mouth);
 
         // Audio-reactive lip colour + glow
         const float pulse = 0.35f + 0.65f * (0.4f + 0.6f * activityLevel);
-        const auto mint = juce::Colour(OLEDLookAndFeel::MintGreen);
+        const auto mint = ModernMuseTheme::mintGreen;
 
         // Outer glow
         g.setColour(mint.withAlpha(0.18f * pulse));

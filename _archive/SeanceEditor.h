@@ -4,6 +4,7 @@
 #include "PluginProcessor.h"
 #include "ui/SeanceLookAndFeel.h"
 #include "ui/SeanceColors.h"
+#include "ui/themes/Theme.h"
 #include "ui/FloatingWord.h"
 
 /**
@@ -49,10 +50,9 @@ public:
         // === Setup Knob Labels (Minimal) ===
         auto setupLabel = [this](juce::Label& label, const juce::String& text, int x, int y)
         {
-            using namespace Muse::Colors;
             label.setText(text, juce::dontSendNotification);
             label.setFont(juce::Font(juce::Font::getDefaultSansSerifFontName(), 10.0f, juce::Font::plain));
-            label.setColour(juce::Label::textColourId, Taupe.withAlpha(0.7f));
+            label.setColour(juce::Label::textColourId, SeanceTheme::taupe.withAlpha(0.7f));
             label.setJustificationType(juce::Justification::centred);
             label.setBounds(x - 40, y + KnobSize/2 + 4, 80, 14);
             addAndMakeVisible(label);
@@ -126,17 +126,17 @@ public:
         auto centre = bounds.getCentre();
         
         // === Layer 1: Dark Texture Base (15% opacity) ===
-        g.setColour(Colors::TextureBase.withAlpha(0.15f));
+        g.setColour(SeanceTheme::backgroundBase.withAlpha(0.15f));
         g.fillAll();
         
         // === Layer 2: Warm Linen Overlay (85% opacity) ===
-        g.setColour(Colors::WarmOverlay.withAlpha(0.85f));
+        g.setColour(SeanceTheme::overlayWarm.withAlpha(0.85f));
         g.fillAll();
         
         // === Layer 3: Dramatic Vignette (Warm Center → Dark Edges) ===
         juce::ColourGradient vignette(
-            juce::Colours::transparentBlack, centre.x, centre.y,
-            Colors::VignetteEdge.withAlpha(0.7f), 0.0f, 0.0f,
+            SeanceTheme::transparentBlack, centre.x, centre.y,
+            SeanceTheme::vignetteEdge.withAlpha(0.7f), 0.0f, 0.0f,
             true  // radial
         );
         g.setGradientFill(vignette);

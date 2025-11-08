@@ -36,6 +36,12 @@ build/
 *.dll
 *.pdb
 
+# Xcode projects
+*.xcodeproj/
+*.xcworkspace/
+**/*.xcuserdatad/
+**/*.xcuserdata/
+
 # Archives and large dumps
 *.zip
 *.7z
@@ -51,3 +57,21 @@ build/
 **/.DS_Store
 .vs/
 .cache/
+
+# VS Code
+.vscode/
+
+# Local creative scratchpads (not for version control)
+_archive/
+_ideas/
+
+# Local workspace bots/state
+/.claude/
+/.cursor/
+
+
+# Large binary assets (keep out of git)
+*.exb
+/build/
+build/
+.vs/

@@ -1,6 +1,7 @@
 #pragma once
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "OLEDLookAndFeel.h"
+#include "ui/themes/Theme.h"
 
 /**
  * TransmissionArea - Context-aware status messages
@@ -51,7 +52,7 @@ public:
         auto bounds = getLocalBounds();
         
         // Dark background matching HTML prototype
-        g.setColour(juce::Colour(0xFF141b1d));
+        g.setColour(ModernMuseTheme::panelBackground);
         g.fillRoundedRectangle(bounds.toFloat(), 4.0f);
         
         // Get current state (simple read - already on message thread)
@@ -64,15 +65,15 @@ public:
         
         // Draw message with OLED glow effect
         auto textBounds = bounds.toFloat();
-        g.setColour(juce::Colour(OLEDLookAndFeel::MintGreen).withAlpha(0.9f));
+        g.setColour(ModernMuseTheme::mintGreen.withAlpha(0.9f));
         g.setFont(juce::Font("Space Grotesk", 14.0f, juce::Font::bold));
         
         // Add subtle glow
-        g.setColour(juce::Colour(OLEDLookAndFeel::MintGreen).withAlpha(0.3f));
+        g.setColour(ModernMuseTheme::mintGreen.withAlpha(0.3f));
         g.drawText(message, textBounds.translated(1, 1), juce::Justification::centred, false);
         
         // Main text
-        g.setColour(juce::Colour(OLEDLookAndFeel::MintGreen));
+        g.setColour(ModernMuseTheme::mintGreen);
         g.drawText(message, textBounds, juce::Justification::centred, false);
     }
     

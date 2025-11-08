@@ -203,7 +203,7 @@ namespace Muse
          */
         inline juce::Font getPrimaryFont(float size = ValueSize, float weight = WeightNormal)
         {
-            return juce::Font(juce::FontOptions().withHeight(size)).withExtraKerningFactor(0.0f);
+            return juce::Font(size, juce::Font::plain).withExtraKerningFactor(0.0f);
         }
 
         /**
@@ -211,7 +211,7 @@ namespace Muse
          */
         inline juce::Font getMuseVoiceFont(float size = TransmissionSize)
         {
-            return juce::Font(juce::FontOptions().withName("Georgia").withHeight(size));
+            return juce::Font("Georgia", size, juce::Font::plain);
         }
 
         /**
