@@ -56,3 +56,9 @@ build/
 /.claude/
 /.cursor/
 
+
+# Large binary assets (keep out of git)
+*.exb
+/build/
+build/
+.vs/
