@@ -62,3 +62,4 @@ build/
 /build/
 build/
 .vs/
+node_modules/

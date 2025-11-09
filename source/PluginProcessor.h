@@ -89,7 +89,7 @@ public:
         return maxPoleRadius_.load(std::memory_order_relaxed);
     }
     
-    bool wasNanDetected() const
+    bool wasNanDetected()
     {
         return nanDetected_.exchange(false, std::memory_order_relaxed);  // Read and clear
     }
