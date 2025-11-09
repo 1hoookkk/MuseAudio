@@ -1,0 +1,112 @@
+{
+  "version": "1.0.0",
+  "name": "Muse OLED Séance Design System",
+  "description": "Locked-in design tokens for the Muse haunted morphing filter. Mint phosphor on pure black - authentic 1989 CRT aesthetic. This is the final vision. DO NOT DEVIATE.",
+
+  "philosophy": {
+    "core": "Haunted hardware from 1989. Conduct a séance with geometry. Mint phosphor glow on void-black background.",
+    "rules": [
+      "Two colors only: #000000 (black) and #d8f3dc (mint phosphor)",
+      "Smooth vector graphics - no chunky blocks",
+      "Interactive and responsive - modern UX with retro aesthetic",
+      "Clean and minimal - let the mouth do the talking",
+      "Authentic phosphor glow effects"
+    ]
+  },
+
+  "colors": {
+    "background": {
+      "void": "#000000",
+      "description": "Pure black. No gradients. The void."
+    },
+    "phosphor": {
+      "mint": "#d8f3dc",
+      "glow": "#d8f3dc80",
+      "dim": "#d8f3dc40",
+      "description": "P1 phosphor green. Authentic CRT display color. Maximum contrast, minimal eye strain."
+    },
+    "rationale": "19.8:1 contrast ratio. Historically accurate P1 phosphor. Distinctive in plugin market. Reduces eye fatigue in dark studios."
+  },
+
+  "layout": {
+    "canvas": {
+      "width": 800,
+      "height": 400,
+      "orientation": "horizontal"
+    },
+    "regions": {
+      "controls": {
+        "x": 0,
+        "width": 380,
+        "description": "Left side: 3 interactive knobs (MORPH, INTENSITY, MIX)"
+      },
+      "display": {
+        "x": 380,
+        "width": 420,
+        "description": "Right side: Large mouth visualization responding to formant changes"
+      }
+    }
+  },
+
+  "components": {
+    "knobs": {
+      "count": 3,
+      "parameters": ["morph", "intensity", "mix"],
+      "diameter": 120,
+      "style": "Circular with indicator line",
+      "color": "mint phosphor outline",
+      "interaction": "Mouse drag (vertical + horizontal)",
+      "positions": [
+        {"name": "MORPH", "x": 120, "y": 90},
+        {"name": "INTENSITY", "x": 120, "y": 260},
+        {"name": "MIX", "x": 280, "y": 175}
+      ]
+    },
+    "mouth": {
+      "type": "Smooth vector ellipse",
+      "vowels": ["AA", "AH", "EE"],
+      "morphing": "Continuous smooth interpolation",
+      "glow": "Phosphor bloom effect",
+      "description": "The mouth is the visualization. Wide open (AA) → neutral (AH) → narrow smile (EE). Responds directly to morph parameter."
+    },
+    "header": {
+      "text": "MUSE",
+      "font": "Bold, 18px",
+      "position": "Top left (30, 15)",
+      "color": "mint phosphor"
+    }
+  },
+
+  "visual_effects": {
+    "phosphor_glow": {
+      "enabled": true,
+      "blur_radius": 8,
+      "opacity": 0.6,
+      "description": "Authentic CRT bloom effect"
+    },
+    "scanlines": {
+      "enabled": false,
+      "description": "Optional - can add if needed for more retro feel"
+    },
+    "frame_rate": {
+      "target": 60,
+      "description": "Smooth modern refresh, not the old 10 FPS snap"
+    }
+  },
+
+  "technical": {
+    "juce_version": "8.0.10",
+    "color_format": "0xFFRRGGBB",
+    "graphics": "Pre-calculated paths, zero paint() allocations",
+    "threading": "Lock-free atomics for UI↔DSP communication"
+  },
+
+  "locked": true,
+  "immutable_rules": [
+    "Mint (#d8f3dc) on black (#000000) ONLY",
+    "No gradients on background",
+    "Smooth vector mouth, not pixel grid",
+    "Keep it clean and minimal",
+    "This is the vision. Ship it."
+  ]
+}
