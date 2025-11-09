@@ -1,345 +1,311 @@
-# Muse - North Star Vision
+# NORTH STAR: Muse
 
-**Last Updated**: 2025-11-07  
-**Status**: Live Implementation Guide
+**Last Updated:** 2025-11-10
+**Status:** Design Locked - Implementation in Progress
 
-This document defines what Muse **is right now** and where it's going next.
+**What we're building:** A haunted morphing filter that conducts a séance with geometry.
 
----
-
-## What Muse Is
-
-**A haunted morphing filter** featuring authentic E-mu Z-plane technology, wrapped in an OLED séance aesthetic. It's a boutique instrument that feels alive—tactile, hypnotic, and beautiful.
-
-**The User Experience**: You're not tweaking parameters. You're conducting a séance with a ghostly mouth made of light. Turn a knob, watch the mouth respond. It's direct, visceral, and strangely intimate.
+**Not another studio plugin.** Not competing on features. Competing on **identity**.
 
 ---
 
-## The Aesthetic: "OLED Séance"
+## The Core Experience
 
-### Core Identity
-- **Dark, brutalist hardware aesthetic** from the 80s/90s
-- **Retro OLED display** showing a procedurally-generated mouth
-- **Mint green phosphor glow** (#d8f3dc) on pure black (#000000)
-- **No gradients, no warmth**—just cold, precise, beautiful light
+You open Muse. Pure black void. A ghostly mint phosphor mouth stares back.
 
-### The Mouth
-This is the soul of the plugin. A **16×6 grid of glowing LED points** that form mouth shapes in real-time.
+You turn MORPH. The mouth **snaps** between shapes—AA (wide open), AH (neutral), EE (narrow). Not smooth. **Stuttering at 10 FPS** like broken 1989 CRT hardware.
 
-**What it looks like:**
-- Individual circular LEDs with 15% gaps between them
-- Each LED has a radial glow (mint green core fading to transparent)
-- The pattern forms recognizable mouth shapes (open vowel, wide smile, tight circle, etc.)
-- **10 FPS animation**—it snaps between states like old hardware, not smooth 60fps
-- Organic imperfections: 3-5% of LEDs flicker randomly, asymmetry, breathing sparkles
+It's slightly unsettling. Mechanical. Otherworldly. You feel like you're communicating with something through an old terminal screen.
 
-**What controls it:**
-- **Shape Pair** (VOWEL/BELL/LOW/SUB): Changes the mouth's character entirely
-- **Morph** (0-1): Interpolates between A and B poles of the shape
-- **Intensity** (0-1): How aggressive the filter resonates (mouth gets wider/more energetic at high values)
-- **Audio Level**: Mouth responds to incoming signal (bigger when loud, subtle when quiet)
-
-**Technical:** This is NOT vector art. It's a grid (`GenerativeMouth.h`, 16 columns × 6 rows). Each LED is positioned, tested against an ellipse equation, and rendered as a circle with glow. It's **deliberately retro hardware**, not smooth modern UI.
+**That visceral discomfort is the product.**
 
 ---
 
-## The Interface (400×600px)
+## Why This Matters
+
+### The Problem
+Every modern plugin looks the same: gradients, RGB glows, smooth 60 FPS animations, "premium dark UI."
+
+FabFilter, Serum, Ableton devices—they're **beautiful and forgettable**.
+
+### The Solution
+Muse doesn't try to look expensive. It looks **haunted**.
+
+- **Mint phosphor (#d8f3dc) on pure black (#000000)** - Authentic P1 phosphor CRT displays
+- **10 FPS mouth stutter** - Hardware snap creates visceral, mechanical feel
+- **Minimal interface** - Just a mouth, 3 knobs, and a title
+- **No explanations** - The mouth responds. That's all you need to know.
+
+### The Rationale
+
+**Mint phosphor is engineered, not aesthetic:**
+- 19.8:1 contrast ratio (better than white on dark gray)
+- Historical authenticity (real CRT oscilloscopes used P1 green phosphor)
+- Eye fatigue reduction (green wavelengths easiest on eyes in dark studios)
+- Market distinction (scan any plugin site—nothing looks like this)
+- Emotional resonance (ghostly, otherworldly, refined)
+
+**10 FPS stutter is intentional:**
+- Creates visceral, slightly unsettling motion
+- Feels mechanical and broken (in a good way)
+- Reinforces the "1989 haunted hardware" narrative
+- Makes the mouth feel **alive** but not human
+- **This is NOT a bug** - it's the identity
+
+---
+
+## The Rules (Locked Forever)
+
+**Source of Truth:** `design/muse-design-system.json`
+
+1. **Two colors only**: #000000 (black) and #d8f3dc (mint phosphor)
+2. **No gradients on background**: Pure black void
+3. **Smooth vector mouth**: Ellipse that morphs AA → AH → EE
+4. **10 FPS mouth animation**: Hardware snap, never smooth interpolation
+5. **Minimal layout**: Mouth + 3 knobs + title only
+6. **Authentic phosphor glow**: CRT bloom effect on mint elements
+
+**These rules are non-negotiable.** They define the product.
+
+---
+
+## What We're NOT Building
+
+❌ A "professional studio plugin" - Generic, safe, forgettable
+❌ Feature-complete filter - We have 3 knobs, not 50
+❌ Smooth, polished UX - The stutter is intentional
+❌ Conventional design - We're not competing with FabFilter
+❌ Something for everyone - This is intentionally polarizing
+
+**If someone says "it looks broken" or "the animation stutters," that means it's working.**
+
+---
+
+## What We ARE Building
+
+✅ A piece of haunted hardware from 1989
+✅ A séance conducted through geometry
+✅ An instrument with personality and character
+✅ Something that makes you feel slightly uncomfortable
+✅ The most distinctive filter plugin in any marketplace
+
+**Identity over features. Character over polish. Vision over validation.**
+
+---
+
+## The Interface (800×400px Horizontal)
 
 ### Layout
 ```
-┌─────────────────────────────────────┐
-│  [Logo]                             │  ← Header (50px)
-│                                     │
-│  ┌─────────────────────────────┐   │
-│  │                             │   │
-│  │     THE GLOWING MOUTH       │   │  ← OLED Display (300px)
-│  │     (16×6 LED grid)         │   │     Pure black background
-│  │                             │   │     Mint green LEDs
-│  └─────────────────────────────┘   │
-│                                     │
-│   [VOWEL] [BELL] [LOW] [SUB]       │  ← Shape Selector (40px)
-│                                     │
-│    ⚫MORPH  ⚫INTENSITY  ⚫MIX        │  ← Knobs (120px)
-│                                     │
-│  "Processing... fr...equencies"    │  ← Transmission (90px)
-│  [STATUS: ████ 12% CPU]            │     Messages from Muse
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  MUSE                                                            │
+│                                                                  │
+│   ⚫          ⚫                  ┌──────────────────────────┐   │
+│  MORPH    INTENSITY             │                          │   │
+│                                  │                          │   │
+│                                  │    MINT PHOSPHOR MOUTH   │   │
+│   ⚫                              │    (Smooth vector)       │   │
+│  MIX                             │    Snaps at 10 FPS       │   │
+│                                  │    AA → AH → EE          │   │
+│                                  │                          │   │
+│                                  └──────────────────────────┘   │
+└──────────────────────────────────────────────────────────────────┘
+  0-380px: Controls              380-800px: Mouth Display
 ```
 
 ### Color Palette
 ```
-Background:     #000000 (pure black)
-Accent:         #d8f3dc (mint green phosphor)
-Structure:      #2F4F4F (dark teal for cards/knobs)
-Inactive:       #1a1a1a (dark grey for off elements)
+Background:     #000000 (pure black void)
+Phosphor:       #d8f3dc (mint - P1 phosphor green)
+Glow:           #d8f3dc80 (semi-transparent for bloom)
+Dim:            #d8f3dc40 (very dim for subtle elements)
 ```
 
-**That's it.** Two colors. No gradients, no lilac, no peach. Cold, precise, retro hardware.
-
-### Components (What's Built ✅)
-
-**1. GenerativeMouth (The LED Display)** ✅
-- 16×6 grid of circular LEDs
-- 10 FPS procedural generation
-- Responds to: shape pair, morph, intensity, audio level
-- Organic noise: random flicker, asymmetry, breathing
-- **File:** `source/ui/GenerativeMouth.h`
-
-**2. ShapePairSelector** ✅
-- Four brutalist square buttons: VOWEL / BELL / LOW / SUB
-- Active button glows mint green
-- Changes the entire character of the mouth/filter
-- **File:** `source/ui/ShapePairSelector.h`
-
-**3. TransmissionArea** ✅
-- Dark teal card with mint green text
-- Context-aware messages (e.g., "Vowel morphing... fr...equencies")
-- **10 FPS stutter-frame text** animation (broken radio transmission feel)
-- **File:** `source/ui/TransmissionArea.h`
-
-**4. StatusBar** ✅
-- CPU meter
-- Stability indicators
-- Minimal, functional
-- **File:** `source/ui/StatusBar.h`
-
-**5. Custom Knobs** ✅
-- Large (60-80px), charcoal circles
-- Mint green indicator line (no numbers)
-- Weighted feel (high resolution, smooth momentum)
-- Labels: MORPH, INTENSITY, MIX
-- **File:** `source/ui/MuseKnob.h`
-
-**6. Logo** ✅
-- Female silhouette (24×24px, top-left)
-- Mint green on dark background
-- Subtle breathing glow when audio passes
-- **File:** Rendered in `PluginEditor.cpp`
+**That's it.** Two colors. No gradients. No complexity. Pure contrast.
 
 ---
 
-## The Parameters (What Actually Exists)
+## The Mouth Algorithm (Hardware Snap at 10 FPS)
 
-### Current Parameters ✅
-1. **Shape Pair** (int, 0-3): VOWEL / BELL / LOW / SUB
-2. **Morph** (float, 0-1): A/B interpolation within selected pair
-3. **Intensity** (float, 0-1): Resonance depth (filter feedback)
-4. **Mix** (float, 0-1): Dry/wet blend
-5. **Auto Makeup** (bool): RMS-based gain compensation
+```cpp
+// UI refreshes at 60 FPS, but mouth updates at 10 FPS
+void timerCallback() override
+{
+    if (++frameCount % 6 == 0)  // 60 FPS / 6 = 10 FPS
+    {
+        // Get vowel shape from DSP
+        VowelShape vowel = getCurrentVowelShape();
 
-**These are locked in.** They work. The plugin sounds great with these five controls.
+        // Snap to new shape (NO interpolation)
+        currentMouthWidth = getWidthForVowel(vowel);
+        currentMouthHeight = getHeightForVowel(vowel);
 
-### Parameters NOT Implemented ❌
-- ~~DRIFT~~ (autonomous LFO modulation)
-- ~~HAUNT~~ (additional resonance layer)
-- ~~FOCUS~~ (character-aware blend)
+        repaint();  // Redraw with new shape
+    }
+}
 
-**Decision:** Do we add DRIFT/HAUNT later (v1.1+), or ship with current 3-knob layout?
+void paint(Graphics& g) override
+{
+    // Pure black void
+    g.fillAll(Colour(0xFF000000));
+
+    // Draw mouth ellipse with phosphor glow
+    Path mouth;
+    mouth.addEllipse(bounds.withSizeKeepingCentre(
+        currentMouthWidth, currentMouthHeight));
+
+    // Glow layer (CRT bloom)
+    g.setColour(Colour(0x80d8f3dc));
+    g.fillPath(mouth);
+
+    // Solid mint outline
+    g.setColour(Colour(0xFFd8f3dc));
+    g.strokePath(mouth, PathStrokeType(2.0f));
+}
+
+// Vowel shape dimensions
+float getWidthForVowel(VowelShape v) {
+    switch (v) {
+        case AA: return 180.0f;  // Wide open
+        case AH: return 150.0f;  // Neutral
+        case EE: return 120.0f;  // Narrow smile
+    }
+}
+
+float getHeightForVowel(VowelShape v) {
+    switch (v) {
+        case AA: return 120.0f;  // Tall opening
+        case AH: return 100.0f;  // Neutral
+        case EE: return 80.0f;   // Narrow horizontal
+    }
+}
+```
+
+**Key insight:** The UI runs at 60 FPS for smooth knob interaction, but the mouth **snaps** to new shapes every 100ms. This creates the haunted, mechanical feel while keeping the controls responsive.
 
 ---
 
-## The DSP (What's Real)
+## Current Implementation Status
 
-### Core Engine ✅
-- **6-stage biquad cascade** (12 poles total)
-- **Authentic E-mu Z-plane shapes** (hardcoded poles from `EMUAuthenticTables_VERIFIED.h`)
-- **Geodesic interpolation** between shape pairs (not linear)
-- **Per-sample coefficient smoothing** (no clicks/zippers)
-- **RMS-based auto makeup gain** (optional)
-- **Safety constraints** (poles clamped to r < 0.995)
+### DSP ✅ Production Ready
+- Authentic E-mu Z-plane filter (6-stage biquad cascade)
+- Geodesic morphing between vowel shapes
+- 3 parameters: MORPH (vowel journey), INTENSITY (resonance), MIX (dry/wet)
+- 4 shape pairs: VOWEL, BELL, LOW, SUB
+- Thread-safe (lock-free atomics)
+- 5-8% CPU (scalar mode)
 
-**Performance:**
-- Scalar mode only (SIMD hooks exist but not enabled)
-- ~5-8% CPU usage on mid-range hardware
-- Rock-solid stability (no dropouts, no denormals)
+### UI 🏗️ In Progress
+- ✅ Interactive knobs (MORPH, INTENSITY, MIX)
+- ✅ All parameters at neutral state (0.5)
+- ⏳ Mint phosphor on pure black aesthetic
+- ⏳ Smooth vector mouth with 10 FPS snap
+- ⏳ Phosphor glow effects (CRT bloom)
 
-**Files:**
-- `modules/zplane-dsp/ZPlaneFilter_fast.h`
-- `modules/zplane-dsp/EMUAuthenticTables.h`
-- `source/PluginProcessor.cpp`
-
-### Thread Safety ✅
-- **Audio thread:** Pure DSP, no allocations, no locks
-- **UI thread:** Rendering, parameter updates via APVTS
-- **Communication:** 2 atomics (`audioLevel_`, `currentVowelShape_`) for UI feedback
-- **Envelope smoothing:** Time-constant based (buffer-size independent)
-
-**This is production-ready.** No race conditions, no undefined behavior.
+### Polish ⏳ Next
+- Preset system (factory presets, save/load)
+- SIMD optimization (2-3× DSP performance)
+- Microinteractions (startup animation, haunted behavior)
 
 ---
 
-## What's Next: The Roadmap
+## v1.0 Scope (Ship This)
 
-### Phase 1: Presets (1-2 weeks) 🎯 NEXT
-**Goal:** Ship v1.0 with preset system
+**Must Have:**
+1. Mint phosphor mouth that snaps at 10 FPS (AA → AH → EE)
+2. 3 interactive knobs responding smoothly at 60 FPS
+3. Pure black background with authentic phosphor glow
+4. Preset system (5-10 factory presets)
+5. VST3/AU/CLAP builds
 
-**Tasks:**
-1. ComboBox or `< >` navigator for preset selection
-2. 5-10 factory presets with simple names:
-   - "Wide Open" (vowel A, high morph)
-   - "Whisper" (vowel B, low intensity)
-   - "Bell Tower" (bell shape, mid morph)
-   - "Sub Rumble" (sub shape, high intensity)
-   - etc.
-3. Save/Load via JUCE PresetManager (or custom)
-4. Current preset name shown in TransmissionArea
+**Nice to Have (v1.1+):**
+- DRIFT parameter (autonomous movement)
+- Advanced microinteractions
+- SIMD DSP optimization
 
-**No AI naming yet.** Just ship something usable.
-
-### Phase 2: SIMD Optimization (2-3 days)
-**Goal:** 1.5-3× DSP performance improvement
-
-**Tasks:**
-1. Enable SSE2 path in `ZPlaneFilter_fast.h`
-2. Benchmark suite to prove gains
-3. Fallback to scalar on old CPUs
-
-**Low risk, high ROI.** The code is already written, just needs enabling.
-
-### Phase 3: DRIFT Parameter (3-5 days) 🤔 OPTIONAL
-**Goal:** Autonomous movement system
-
-**What it does:**
-- Ultra-slow LFO (30-120 second cycles)
-- Modulates MORPH parameter subtly
-- Knob indicator rotates on its own
-- Depth controlled by DRIFT knob (0 = off, 1 = wild)
-
-**Questions:**
-- Do we need this for v1.0, or save for v1.1?
-- Does it fit the "OLED hardware" aesthetic (or is it too "AI")?
-
-### Phase 4: Microinteractions (1-2 weeks)
-**Goal:** Bring the UI to life
-
-**Examples:**
-- **Startup:** Mouth draws itself (dot → full shape over 500ms)
-- **Preset change:** LEDs scatter → reform in new pattern
-- **Idle state:** Mouth thins to whisper, drifts slowly across screen
-- **High intensity:** LEDs flicker violently, some blink off
-
-**This is pure polish.** Makes it feel haunted and alive.
-
-### Phase 5+: Advanced Features (Future)
-- Voice control (whisper.cpp)
-- AI preset naming (llama.cpp)
-- Neural DSP layer (RTNeural)
-- Style transfer (ONNX/Core ML)
-
-**These are v2.0+.** Ship a solid v1.0 first.
+**Out of Scope (v2.0+):**
+- AI features
+- Voice control
+- Neural DSP layers
 
 ---
 
 ## Design Principles (The Rules)
 
 ### 1. Hardware, Not Software
-This plugin looks like **physical hardware from 1989**. An OLED display showing a mouth made of discrete LEDs. It's not a smooth iPad app—it's a piece of vintage gear.
+This plugin looks like **physical hardware from 1989**. A CRT display showing a mouth made of phosphorescent light. It's not a smooth modern app—it's vintage gear.
 
 **Implications:**
-- 10 FPS animation (not 60fps)
-- Discrete LED grid (not smooth vector paths)
+- 10 FPS mouth animation (not 60fps smooth)
+- Smooth vector ellipse (not chunky blocks)
 - Pure black background (not gradients)
-- Mint green only (no color variety)
+- Mint phosphor only (no color variety)
 
 ### 2. Direct, Visceral Control
 You turn MORPH, the mouth morphs. You crank INTENSITY, it gets aggressive. You hear it, you see it, you feel it. **No cognitive load.**
 
 **Implications:**
-- No numbers on knobs (unless you right-click)
-- No preset browser dropdowns (just `< >` navigation)
-- No hidden menus or settings panels
+- Knobs respond immediately at 60 FPS
+- Mouth snaps at 10 FPS for haunted feel
+- No numbers unless you need them
 - Everything important is visible
 
 ### 3. The Mouth Is the Interface
 Users should watch the mouth, not the knobs. It's the **feedback mechanism**. When they adjust parameters, they're conducting the mouth like an instrument.
 
 **Implications:**
-- Mouth dominates the layout (300px of 600px height)
-- Knobs are secondary (below, smaller)
+- Mouth dominates the layout (right half of 800×400px)
+- Knobs are secondary (left side, smaller)
 - No waveform displays or spectrum analyzers (the mouth IS the visualizer)
 
-### 4. Retro Imperfection
-The mouth has **organic flaws**: random LED flicker (3-5%), asymmetry, breathing sparkles. It's not perfect, it's alive.
+### 4. Authentic Imperfection
+The 10 FPS snap isn't smooth. It's **mechanical**. Slightly broken. Otherworldly. That's intentional.
 
 **Implications:**
-- Embrace the 10 FPS "snap" (don't try to smooth it)
-- Add more noise/chaos at high intensity (not less)
-- Avoid "clean" modern UI patterns
+- Embrace the stutter (don't try to smooth it)
+- The snap creates visceral discomfort
+- This is the product, not a bug
 
 ---
 
-## What Muse Is NOT
+## Success Metrics
 
-❌ **Not a "Brutalist Temple"** with warm linen overlays and lilac-peach gradients (that was the old roadmap)  
-❌ **Not AI-powered** (no llama.cpp, no "Ask Muse" oracle—yet)  
-❌ **Not smooth/modern** (no 60fps, no vector art, no gradients)  
-❌ **Not a traditional plugin UI** (no tabbed panels, no preset browsers, no numeric readouts)  
+**NOT measuring:**
+- Feature parity with competitors
+- Mass market appeal
+- Positive sentiment from everyone
 
-It's a **haunted OLED instrument**. Cold, precise, beautiful, and slightly broken.
+**ARE measuring:**
+- Immediate visual recognition ("That's Muse")
+- Polarized reactions (love it or hate it, not indifferent)
+- People describing it as "haunted," "weird," "unsettling," "distinctive"
+- Artists using it BECAUSE it's different, not despite it
 
----
-
-## Technical Specs (For Reference)
-
-### Stack
-- **JUCE 8.0.4** (audio plugin framework)
-- **CMake 3.25+** (build system)
-- **MSVC 17.14** (C++17)
-- **Windows/macOS/Linux** (cross-platform)
-
-### Plugin Formats ✅
-- VST3 (7.0 MB)
-- CLAP (working)
-- AU (macOS)
-- Standalone (7.3 MB)
-
-### Build ✅
-All formats building successfully. No errors.
-
-### Performance ✅
-- 5-8% CPU (scalar mode)
-- No dropouts, no clicks
-- Stable under stress tests
+**If everyone likes it, we've failed.**
+**If it's divisive and memorable, we've succeeded.**
 
 ---
 
-## Success Criteria
+## The Vision Statement
 
-### v1.0 (Ship in 1-2 Weeks)
-- ✅ Core DSP works (Z-plane filter, 4 shape pairs, morphing)
-- ✅ UI complete (OLED mouth, knobs, shape selector, transmission area)
-- ✅ Thread-safe (no race conditions)
-- ⏳ **Preset system** (5-10 factory presets, save/load)
-- ⏳ **Polish pass** (fix any rough edges, test in real DAWs)
+> "Muse is not a plugin. It's a haunted terminal from 1989 that filters audio through geometry. When you turn the MORPH knob, a phosphorescent mouth snaps between vowel shapes at 10 FPS—mechanical, slightly broken, unnervingly responsive. It's not trying to be professional or polished. It's trying to feel **alive**."
 
-### v1.1 (Post-Launch)
-- SIMD optimization (1.5-3× faster DSP)
-- DRIFT parameter (autonomous movement)
-- Microinteractions (startup animation, preset transitions)
-
-### v2.0 (Future)
-- AI features (llama.cpp for preset naming, parameter interpretation)
-- Voice control (whisper.cpp)
-- Neural DSP layer (RTNeural)
+**That's what we're building. Ship it.**
 
 ---
 
-## The North Star
+## Final Word
 
-**"The Mouth, Drawn with Living Ink."**
+Every decision—mint phosphor, 10 FPS stutter, minimal layout, pure black void—serves the same goal: **Create an interface so distinctive that nobody mistakes it for anything else.**
 
-A dark screen. A glowing grid of LEDs forming a mouth. You turn a knob, the mouth responds. It's **immediate, tactile, hypnotic, and beautiful**.
+The DSP is world-class E-mu Z-plane technology. The UI is a haunted CRT terminal. Together they create something that doesn't exist in the plugin market.
 
-You're not using a plugin. You're conducting a séance with a piece of haunted hardware.
+**Don't compromise the vision for validation. The vision IS the product.**
 
----
-
-*This is what Muse is.*  
-*Everything else is noise.*  
-*Ship it.*
+**Ship the séance.**
 
 ---
 
-**Maintained by:** Claude Code + Human Visionary  
-**Last Updated:** 2025-11-07  
-**Status:** Live Implementation (v1.0 in progress)
+**Maintained by:** Claude Code + Human Visionary
+**Last Updated:** 2025-11-10
+**Status:** Design Locked - Mint Phosphor + 10 FPS Snap Final

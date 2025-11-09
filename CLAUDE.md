@@ -19,8 +19,9 @@ Muse is a **haunted morphing filter** featuring authentic E-mu Z-plane technolog
 1. **Two colors only**: `#000000` (pure black) and `#d8f3dc` (mint phosphor)
 2. **No gradients on background**: Pure black void only
 3. **Smooth vector mouth**: Ellipse that morphs AA → AH → EE
-4. **Clean and minimal**: Mouth + 3 knobs + title only
-5. **Authentic phosphor glow**: CRT bloom effect
+4. **10 FPS mouth animation**: Hardware snap, not smooth interpolation
+5. **Clean and minimal**: Mouth + 3 knobs + title only
+6. **Authentic phosphor glow**: CRT bloom effect
 
 ### Why This Matters
 
@@ -80,7 +81,7 @@ auto gradient = ColourGradient(gray1, gray2...);  // WRONG
 ### Performance
 - 5-8% CPU (scalar), target 2-3% with SIMD
 - Zero allocations in audio thread
-- 60 FPS UI for smooth mouth morphing
+- 60 FPS UI refresh, 10 FPS mouth updates (hardware snap)
 
 ### UI (JUCE 8.0.10)
 ```cpp

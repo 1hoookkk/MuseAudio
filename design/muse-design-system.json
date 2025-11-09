@@ -65,9 +65,11 @@
     "mouth": {
       "type": "Smooth vector ellipse",
       "vowels": ["AA", "AH", "EE"],
-      "morphing": "Continuous smooth interpolation",
+      "morphing": "Hardware snap at 10 FPS (not smooth interpolation)",
+      "update_rate": "100ms intervals",
       "glow": "Phosphor bloom effect",
-      "description": "The mouth is the visualization. Wide open (AA) → neutral (AH) → narrow smile (EE). Responds directly to morph parameter."
+      "behavior": "Snaps between vowel shapes with slight delay - creates haunted, mechanical feel",
+      "description": "The mouth is the visualization. Wide open (AA) → neutral (AH) → narrow smile (EE). Updates at 10 FPS for authentic 1989 hardware stutter."
     },
     "header": {
       "text": "MUSE",
@@ -89,8 +91,15 @@
       "description": "Optional - can add if needed for more retro feel"
     },
     "frame_rate": {
-      "target": 60,
-      "description": "Smooth modern refresh, not the old 10 FPS snap"
+      "ui": 60,
+      "mouth_animation": 10,
+      "description": "UI runs at 60 FPS for smooth interaction, but mouth updates at 10 FPS for authentic 1989 hardware stutter. This creates the 'haunted' snap effect."
+    },
+    "mouth_stutter": {
+      "enabled": true,
+      "update_rate": "10 FPS (every 100ms)",
+      "behavior": "Hardware snap - mouth shape snaps between vowel positions instead of smooth interpolation",
+      "rationale": "Creates visceral, slightly unsettling motion that feels mechanical and otherworldly. This is NOT a bug - it's authentic 1989 CRT behavior."
     }
   },
 
