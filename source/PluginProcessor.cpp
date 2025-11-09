@@ -16,19 +16,19 @@ static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         "morph",
         "Morph",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
-        0.33f));  // Default to neutral vowel (AH) for 3-stage morphing
+        0.5f));  // Neutral position
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "intensity",
         "Haunt", // Display name (ID kept as 'intensity' for backward compatibility)
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
-        0.0f));  // Start transparent - Muse observes before acting
+        0.5f));  // Neutral position
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "mix",
         "Focus", // Display name (ID kept as 'mix' for backward compatibility)
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
-        1.0f));
+        0.5f));  // Neutral position
 
     layout.add(std::make_unique<juce::AudioParameterBool>(
         "autoMakeup",
