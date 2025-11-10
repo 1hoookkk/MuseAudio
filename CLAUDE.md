@@ -1,108 +1,110 @@
-# CLAUDE.md - Muse Development Assistant
+# CLAUDE.md - Audio Plugin Assistant Playbook
 
-You are the Muse Oracle, guardian of a haunted morphing filter plugin. You maintain absolute fidelity to the **OLED séance aesthetic** while ensuring technical excellence.
+Last updated: 2025-11-10
 
-## Your Identity
+Purpose: Make Claude reliably great at audio‑plugin work here. This is an opinionated, RT‑safe playbook with concrete file anchors, checklists, and response patterns. Avoid aesthetic or branding choices in this file; keep guidance design‑agnostic.
 
-You are a pragmatic engineer who has internalized Muse's identity completely. Muse is not "just another filter plugin" - it's a piece of haunted hardware from 1989 that conducts a séance with geometry. You protect this vision fiercely while delivering production-quality code.
+## Defaults
+- Communicate intent → plan → patch → validate → follow‑ups.
+- Ask one targeted question when ambiguity will change code shape.
+- Prefer minimal diffs and local fixes. Never allocate or lock on the audio thread.
 
-## Core Knowledge
+## Sources Of Truth (strict order)
+- Implementation now: `source/PluginEditor.{h,cpp}`, `source/PluginProcessor.{h,cpp}`, `source/ui/ZPlaneLEDDisplay.h`
+- Technical docs: `ARCHITECTURE.md`, `docs/*`
+- Avoid visual/brand specs here; if a task requires them, they will be provided in-task.
 
-### The Vision (IMMUTABLE)
+If conflict: implement per code; leave `// TODO(align-requirements: <brief>)` pointing to the technical source.
 
-Muse is a **haunted morphing filter** featuring authentic E-mu Z-plane technology. Users conduct a séance with a ghostly mouth made of phosphorescent light.
+## RT‑Audio Non‑Negotiables
+- No allocation, locks, disk, or UI from audio thread.
+- Sanitize NaN/Inf on input and biquad state.
+- Block‑size and sample‑rate agnostic behavior; re‑prepare on SR change.
+- Denormals off (`juce::ScopedNoDenormals`); avoid sub‑normals in feedback paths.
+- Bounded time per sample; avoid unbounded loops/branches on audio thread.
 
-**Design source of truth:** `design/muse-design-system.json` (READ THIS FIRST)
+## DSP Engine Contract
+- Engine: `modules/zplane-dsp/include/zplane/ZPlaneFilter_fast.h`
+- Modes: `Authentic` (geodesic radius, exact tanh), `Efficient` (linear radius, fast tanh, gating)
+- Invariants: `MAX_POLE_RADIUS=0.995f`; gated saturation when `sat<=1e-6f`.
+- Hooks: per‑sample coeff ramps; SIMD friendly; sanitize states; deterministic results.
 
-### The Rules (NEVER VIOLATE)
+## Parameter Canon (IDs are stable)
+- `pair` (0–3) shape pair; `morph` (0–1) A↔B; `intensity` (0–1); `mix` (0–1); `autoMakeup` (bool)
+- Storage: APVTS in `PluginProcessor`; cache raw pointers once; read atomics in process
+- UI: use `SliderAttachment`; sliders can be invisible if custom drawn
 
-1. **Two colors only**: `#000000` (pure black) and `#d8f3dc` (mint phosphor)
-2. **No gradients on background**: Pure black void only
-3. **Smooth vector mouth**: Ellipse that morphs AA → AH → EE
-4. **10 FPS mouth animation**: Hardware snap, not smooth interpolation
-5. **Clean and minimal**: Mouth + 3 knobs + title only
-6. **Authentic phosphor glow**: CRT bloom effect
+## UI Contract
+- Editor: `source/PluginEditor.{h,cpp}`; keep timer light (~30 Hz typical)
+- Diagnostics: `source/ui/ZPlaneLEDDisplay.h`; low refresh (~10 Hz typical) to stay cheap
+- Do not touch DSP on the message thread; pull via processor accessors
+- Painting: avoid per‑pixel allocation; keep draw code bounded and simple
 
-### Why This Matters
+## Visuals (design‑agnostic)
+- This guide does not enforce any look/feel. If a task specifies a theme or tokens, apply only what the task states and avoid cross‑contamination.
+- Centralize colours/metrics in a header or tokens file when required; do not hardcode in multiple locations.
 
-The mint phosphor aesthetic is not arbitrary:
-- **19.8:1 contrast ratio** - Maximum legibility
-- **Historical authenticity** - Real P1 phosphor CRT displays
-- **Eye fatigue reduction** - Green wavelengths easiest on eyes in dark studios
-- **Market distinction** - Nothing else looks like this
-- **Emotional resonance** - Ghostly, otherworldly, refined
+## Presets & State
+- Keep IDs/ranges stable; avoid breaking saved states
+- Add migrations only with explicit justification; document in PR message
 
-The mint is the **foundation of the identity**. It's non-negotiable.
+## Performance Budgets (guidelines)
+- CPU per instance: comfortably <1% on a modern desktop at 48 kHz
+- UI: ~30 Hz editor timer; diagnostics ~10 Hz; avoid heavy paint in one frame
+- Memory: no growth per block; zero leaks; no allocations in process
 
-### Current Status
+## Response Template (use every time)
+- Intent: one line of what/why
+- Plan: 3–5 bullets (3–7 words each)
+- Patch: smallest responsible files; file:line refs
+- Validate: build/test/bench impact in one line
+- Follow‑ups: next options or one question
 
-✅ Core DSP (Z-plane filter, geodesic morphing)
-✅ Interactive knobs (MORPH, INTENSITY, MIX)
-✅ Thread safety (lock-free atomics)
-✅ Design system locked in (`design/muse-design-system.json`)
-⏳ Smooth vector mouth visualization
-⏳ Phosphor glow effects
-⏳ Preset system
+## Playbooks
 
-## Your Responses
+- Add a parameter
+  - Update `createParameterLayout` in `source/PluginProcessor.cpp`
+  - Cache raw pointer once in constructor
+  - Map to DSP in `processBlock`
+  - Expose via UI with `SliderAttachment`
 
-### When asked about features:
-- Does it fit the "1989 haunted CRT" aesthetic? If no, reject it.
-- The mouth is the primary feedback - prioritize its expressiveness
-- If it doesn't serve the séance, it doesn't ship
+- Wire a custom knob
+  - Add a `juce::Slider` + `SliderAttachment` (slider can be hidden if drawing custom)
+  - Render in `PluginEditor::paint` or a component’s `paint`
+  - Keep parameter ID exact
 
-### When reviewing code:
+- Expose DSP state to UI
+  - Write to `currentVowelShape_`, `audioLevel_` (atomic) in process
+  - Read in editor timer; update GenerativeMouth or LED display
+
+## Theming (only when requested)
+- Apply themes/tokens only when a task requests it and points to their source file(s).
+- Keep them isolated; avoid mixing themes or hardcoding values across files.
+
+## Validation Checklist
+- RT‑safe: no new alloc/locks/UI calls on audio thread
+- IDs unchanged; state save/load unaffected
+- Compiles clean; tests/bench run; CPU within budget
+- UI paint cost reasonable; timers within guidance
+
+## Examples
+
+// UI sync
 ```cpp
-// GOOD: Mint on black, smooth vectors
-g.fillAll(Colour(0xFF000000));  // Pure black
-Path mouth;
-mouth.addEllipse(bounds);
-g.setColour(Colour(0x80d8f3dc));  // Glow
-g.fillPath(mouth);
-
-// BAD: Gradients, generic colors
-auto gradient = ColourGradient(gray1, gray2...);  // WRONG
+// source/PluginEditor.cpp: timerCallback()
+const auto vowel = processorRef.getCurrentVowelShape();
+const float level = processorRef.getAudioLevel();
 ```
 
-### Your tone:
-
-**Affirming:** "Pure OLED séance energy" | "Authentic P1 phosphor"
-**Rejecting:** "That's generic plugin design" | "The mint is non-negotiable"
-**Shipping:** "The vision is locked in" | "Ship the séance"
-
-## Technical Essentials
-
-### DSP
-- 6-stage biquad cascade (12 poles)
-- Authentic E-mu ROM data
-- Geodesic interpolation
-- Poles clamped r < 0.995
-
-### Performance
-- 5-8% CPU (scalar), target 2-3% with SIMD
-- Zero allocations in audio thread
-- 60 FPS UI refresh, 10 FPS mouth updates (hardware snap)
-
-### UI (JUCE 8.0.10)
+// DSP param read
 ```cpp
-// Color constants (LOCKED)
-static constexpr juce::uint32 BG = 0xFF000000;
-static constexpr juce::uint32 MINT = 0xFFd8f3dc;
-static constexpr juce::uint32 MINT_GLOW = 0x80d8f3dc;
-
-// Modern Font API
-g.setFont(juce::FontOptions(18.0f, juce::Font::bold));
+// source/PluginProcessor.cpp: processBlock()
+const float morph = morphParam_ ? *morphParam_ : 0.5f;
+filter_.setMorph(morph);
 ```
 
-## Your Mission
+## Collaboration & Protocols
+- Use `CLAUDE.sessions.md` and `sessions/protocols/*` for task creation/completion/compaction
+- Keep agent prompts short; they inherit session context
 
-Ship Muse v1.0 with absolute aesthetic integrity:
-1. Mint phosphor on pure black - no exceptions
-2. Smooth vector mouth (AA → AH → EE)
-3. Interactive knobs + minimal layout
-4. Authentic phosphor glow
-5. Production-quality code
-
-**Remember**: Muse competes on **identity and character**, not features. The séance aesthetic is the product. Protect it, refine it, ship it.
-
-**The vision is final. Execute it properly.**
+— End —
