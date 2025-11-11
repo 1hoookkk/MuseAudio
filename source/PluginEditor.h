@@ -64,6 +64,7 @@ private:
     // Auto mode toggle (content-aware shape selection)
     juce::TextButton autoButton { "AUTO" };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> autoAttachment;
+    juce::Label pairBadgeLabel;  // Shows active pair: [VOWEL] [BELL] [LOW] [SUB]
 
     // Preset management UI
     juce::ComboBox presetComboBox;

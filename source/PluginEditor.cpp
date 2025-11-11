@@ -22,18 +22,18 @@ PluginEditor::PluginEditor(PluginProcessor& p)
     // Configure knobs (OLED look via custom paint; sliders hidden, used for input)
     for (auto* knob : {&morphKnob, &intensityKnob, &mixKnob})
     {
-        knob->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+        knob->setSliderStyle(juce::Slider::RotaryVerticalDrag); // Vertical drag only (pro plugin standard)
         knob->setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0); // We draw our own value readout
         knob->setRotaryParameters(juce::MathConstants<float>::pi * 1.25f,
                                   juce::MathConstants<float>::pi * 2.75f,
                                   true);
         // Interaction improvements
         knob->setVelocityBasedMode(true);            // Slower drag = finer control
-        knob->setVelocityModeParameters(0.4,         // Sensitivity (lower = finer)
+        knob->setVelocityModeParameters(0.3,         // Sensitivity (lower = finer, more precise)
                                         1.0,         // Threshold
                                         0.0,         // Offset
                                         false);
-        knob->setMouseDragSensitivity(180);
+        knob->setMouseDragSensitivity(150);          // Less travel needed (was 180)
         knob->setDoubleClickReturnValue(true, 0.5f); // Double-click resets to center
         knob->setPopupDisplayEnabled(true, true, this); // Value tooltip on drag
         knob->setScrollWheelEnabled(true);
@@ -62,6 +62,13 @@ PluginEditor::PluginEditor(PluginProcessor& p)
     addAndMakeVisible(autoButton);
     autoAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
         processorRef.getState(), "auto", autoButton);
+
+    // Pair badge label (shows active shape pair: VOWEL/BELL/LOW/SUB)
+    pairBadgeLabel.setText("[VOWEL]", juce::dontSendNotification);
+    pairBadgeLabel.setFont(juce::FontOptions(10.0f, juce::Font::bold));
+    pairBadgeLabel.setColour(juce::Label::textColourId, juce::Colour(LED_MINT).withAlpha(0.8f));
+    pairBadgeLabel.setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(pairBadgeLabel);
 
     // Preset combo box
     presetComboBox.setTextWhenNothingSelected("-- PRESETS --");
@@ -399,10 +406,13 @@ void PluginEditor::resized()
     // Auto button (below display, centered)
     autoButton.setBounds(164, 220, 72, 22);
 
-    // Preset management (top area, left side)
-    presetComboBox.setBounds(12, 12, 150, 22);
-    savePresetButton.setBounds(168, 12, 50, 22);
-    deletePresetButton.setBounds(224, 12, 40, 22);
+    // Pair badge (below AUTO button, shows active pair)
+    pairBadgeLabel.setBounds(164, 245, 72, 14);
+
+    // Preset management (below title, left side)
+    presetComboBox.setBounds(12, 50, 150, 22);
+    savePresetButton.setBounds(168, 50, 50, 22);
+    deletePresetButton.setBounds(224, 50, 40, 22);
 }
 
 void PluginEditor::timerCallback()
@@ -416,6 +426,11 @@ void PluginEditor::timerCallback()
     halftoneMouth.setMorph(morphValue);
     halftoneMouth.setPair(pairIndex);
     // Note: morph + pair drive continuous vowel template blending inside HalftoneMouth
+
+    // Update pair badge label
+    const char* pairNames[] = { "[VOWEL]", "[BELL]", "[LOW]", "[SUB]" };
+    if (pairIndex >= 0 && pairIndex < 4)
+        pairBadgeLabel.setText(pairNames[pairIndex], juce::dontSendNotification);
 
     repaint();
 }

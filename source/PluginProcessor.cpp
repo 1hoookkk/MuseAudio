@@ -19,7 +19,7 @@ static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         "morph",
         "Morph",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
-        0.5f));  // Start at middle position
+        0.0f));  // Start fully closed (shape A) for dramatic opening effect
 
     // Intensity: Formant resonance strength (0.0 = bypass, 1.0 = maximum)
     layout.add(std::make_unique<juce::AudioParameterFloat>(
