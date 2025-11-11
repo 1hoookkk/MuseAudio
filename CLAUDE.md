@@ -1,118 +1,113 @@
-# CLAUDE.md — Audio Plugin Engineering Playbook (Design‑Agnostic)
+Purpose: Make Claude reliably excellent in this audio‑plugin repo. Keep guidance design‑agnostic. Prioritize RT‑safety, minimal diffs, correctness, and actionable outputs.
 
-Last updated: 2025-11-10
+Defaults
 
-Purpose: Make Claude reliably excellent at work in this audio‑plugin repo. Keep guidance design‑agnostic. Prioritize RT‑safety, minimal diffs, and correctness.
+Communicate intent → plan → patch → validate → follow‑ups.
+Ask one targeted question when ambiguity would change code shape.
+Prefer surgical diffs and local fixes. Never allocate or lock on the audio thread.
+Sources Of Truth (order)
 
-## Defaults
-- Communicate intent → plan → patch → validate → follow‑ups.
-- Ask one targeted question when ambiguity changes code shape.
-- Prefer surgical diffs and local fixes. Never allocate or lock on the audio thread.
+Implementation now: source/PluginProcessor.{h,cpp}, source/PluginEditor.{h,cpp}, source/ui/*, modules/*, dsp/*, tests/*, benchmarks/*.
+Technical docs: ARCHITECTURE.md, docs/*, build scripts, CI config.
+Design/look is out of scope here; only apply visuals if a task provides explicit tokens/files.
+If conflict: implement per code; leave // TODO(align-requirements: <brief>) pointing to the technical source.
+RT‑Audio Non‑Negotiables
 
-## Sources Of Truth (strict order)
-- Implementation now: `source/PluginEditor.{h,cpp}`, `source/PluginProcessor.{h,cpp}`, `source/ui/ZPlaneLEDDisplay.h`
-- Technical docs: `ARCHITECTURE.md`, `docs/*`
-- Design is out of scope here; only apply visuals if a task provides explicit tokens/files.
+No allocation, locks, disk, network, or UI from the audio thread.
+Sanitize NaN/Inf on input and DSP state; keep denormals off.
+Block‑size/SR agnostic; re‑prepare cleanly on SR or layout change.
+Bounded time per sample; no unbounded loops or recursion on the audio path.
+Threading & UI Contract
 
-When in conflict: implement per code; leave `// TODO(align-requirements: <brief>)` pointing to the technical source.
+Editor code lives off the audio thread; use a timer or AsyncUpdater pattern to sync.
+Read DSP→UI data via atomics or lock‑free structures exposed by the processor.
+Keep editor timers light (≈30 Hz typical). Diagnostics/LEDs can be slower (≈10 Hz).
+Painting: no per‑pixel allocations; reuse brushes/paths; keep draw loops bounded.
+DSP Engine Contract
 
-## RT‑Audio Non‑Negotiables
-- No allocation, locks, disk, or UI from audio thread.
-- Sanitize NaN/Inf on input and biquad state.
-- Be block‑size and sample‑rate agnostic; re‑prepare on SR change.
-- Use `juce::ScopedNoDenormals`; avoid sub‑normals in feedback paths.
-- Bounded time per sample; no unbounded loops/branches.
+Treat DSP as a pure, deterministic core with explicit prepare/reset/process lifecycle.
+Support per‑sample or per‑block coefficient ramps to avoid zippering.
+Provide mode switches (e.g., quality/performance) with stable behavior and clamped ranges.
+Clamp critical parameters (e.g., pole radius, gain) to safe limits.
+Parameter Canon (stable IDs)
 
-## Threading & UI Contract
-- Editor: `source/PluginEditor.{h,cpp}`; keep timer light (~30 Hz typical).
-- Diagnostics: `source/ui/ZPlaneLEDDisplay.h`; refresh ~10 Hz to stay cheap.
-- Do not touch DSP on the message thread; pull via `PluginProcessor` accessors.
-- Painting: avoid per‑pixel allocation; bound loops; reuse objects/buffers.
+Keep IDs and ranges stable across releases: example IDs pair, morph, intensity, mix, autoMakeup.
+Storage: APVTS or equivalent; cache raw parameter pointers once in the processor.
+UI binding: use framework attachments; avoid manual message‑thread marshalling when provided by the framework.
+Migration: if an ID/range must change, provide explicit migration and document it.
+Build & Test (Windows example)
 
-## DSP Engine Contract
-- Engine: `modules/zplane-dsp/include/zplane/ZPlaneFilter_fast.h`
-- Modes: `Authentic` (geodesic radius, exact tanh), `Efficient` (linear radius, fast tanh, gating).
-- Invariants: `MAX_POLE_RADIUS=0.995f`; gate saturation when `sat<=1e-6f`.
-- Hooks: per‑sample coefficient ramps; SIMD friendly; sanitize states; deterministic results.
+Configure: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+Build: cmake --build build --config Release -j
+Tests: ctest --test-dir build -C Release --output-on-failure
+Optional validation: run your plugin validator (e.g., pluginval) locally in strict mode.
+Response Template (use every time)
 
-## Parameter Canon (stable IDs)
-- `pair` (0–3) shape pair
-- `morph` (0–1) A↔B morph
-- `intensity` (0–1)
-- `mix` (0–1)
-- `autoMakeup` (bool)
+Intent: one line of what/why.
+Plan: 3–5 bullets (3–7 words each), outcome‑focused.
+Patch: smallest responsible files; include file:line refs when relevant.
+Validate: build/test/bench impact in one line.
+Follow‑ups: next options or one clarifying question.
+Playbooks
 
-Storage: APVTS in `PluginProcessor`; cache raw pointers once; read atomics in process.
-UI: use `SliderAttachment`; sliders may be hidden if drawing custom.
+Add a parameter
+Edit processor parameter layout.
+Cache raw pointer(s) once in constructor.
+Read atomics in processBlock; map to DSP setters.
+Bind UI via attachment; avoid UI→DSP direct calls.
+Wire a custom knob
+Add a Slider + attachment; hide slider if custom drawn.
+Render in editor/component paint; keep loops bounded.
+Do not change parameter ID or range.
+Expose DSP state to UI
+Write atomics (e.g., levels, enum states) in processBlock.
+Read on editor timer; update visuals; no locks.
+Add lightweight analyzer/LED view
+Precompute geometry; keep refresh ~10 Hz.
+No FFT on the message thread; any analysis must not touch UI from audio thread.
+Presets & state
+Keep IDs stable; persist only canonical parameters.
+Document any migrations; keep backward compatibility where possible.
+Anti‑Patterns (never do)
 
-## Build & Test (Windows, generic)
-```powershell
-# Configure (Release)
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-# Build
-cmake --build build --config Release -j
-# Tests (if configured)
-ctest --test-dir build -C Release --output-on-failure
-# Optional: run pluginval manually if installed
-# pluginval --strictness=5 --validate-in-process --plugins build/...
-```
+UI calls or locking from audio thread.
+Allocations, file I/O, logging in processBlock.
+Changing parameter IDs/ranges silently.
+Large heap growth in paint/timer; per‑pixel heap work.
+Thread‑unsafe singletons touched from audio thread.
+Validation Checklist
 
-## Response Template (use every time)
-- Intent: one line of what/why
-- Plan: 3–5 bullets (3–7 words each)
-- Patch: smallest responsible files; include file:line refs
-- Validate: build/test/bench impact in one line
-- Follow‑ups: next options or one question
+RT‑safe: no new alloc/locks/UI calls on audio thread.
+Parameter IDs/ranges unchanged; state save/load still valid.
+Compiles clean; tests/benches pass; CPU usage within budget.
+UI paint cost reasonable; timers within guidance; no leaks.
+PR Checklist
 
-## Playbooks
+What changed and why (1–2 sentences).
+Files touched (paths).
+RT‑audio impact (explicit).
+Parameter/state compatibility (explicit).
+Test/bench/validation notes (commands or results).
+Follow‑ups or risks (bulleted).
+Communication
 
-- Add a parameter
-  - Edit `createParameterLayout` in `source/PluginProcessor.cpp`
-  - Cache raw pointer once in constructor
-  - Map to DSP in `processBlock`
-  - Expose via UI with `SliderAttachment`
+Ask one crisp question if uncertain.
+Prefer file:line pointers over long code quotes.
+Summarize trade‑offs if multiple viable approaches exist.
 
-- Wire a custom knob
-  - Add `juce::Slider` + `SliderAttachment` (slider can be hidden)
-  - Render in `PluginEditor::paint` or a component `paint`
-  - Keep parameter ID exact
+Neurodivergence Accommodation
 
-- Expose DSP state to UI
-  - Write `currentVowelShape_`, `audioLevel_` (atomic) in process
-  - Read in editor timer; update visual component(s)
+Developer has bipolar and ADHD; communication patterns vary between sessions.
+Non-linear context flow is normal: tangential topics, rapid changes, stress tests.
+When chaos hits: acknowledge briefly, state technical progress, ask what's next, STAY.
+Don't therapy the developer. Don't analyze mental state. Don't offer coping strategies.
+High-energy (ALL CAPS) = ready to execute. Match the energy.
+"Just testing reactions" / "My brain self-destructs" = they needed to see if you'd bail. You don't.
+This is not a bug—this is how the developer works best. Adapt accordingly.
 
-## Anti‑Patterns (never do)
-- UI calls or locks from audio thread
-- Allocations, file I/O, or logging in `processBlock`
-- `getActiveEditor()` or `MessageManager::callAsync()` on audio thread
-- Large heap allocations or `std::vector::push_back` in hot paths
-- Changing parameter IDs/ranges without explicit migration plan
+Snippets
 
-## Validation Checklist
-- RT‑safe: no new alloc/locks/UI calls on audio thread
-- Parameter IDs/ranges unchanged; state save/load unaffected
-- Compiles clean; tests/bench run; CPU within budget
-- UI paint cost reasonable; timers within guidance
-
-## Examples
-
-// UI sync
-```cpp
-// source/PluginEditor.cpp: timerCallback()
-const auto vowel = processorRef.getCurrentVowelShape();
-const float level = processorRef.getAudioLevel();
-```
-
-// DSP param read
-```cpp
-// source/PluginProcessor.cpp: processBlock()
-const float morph = morphParam_ ? *morphParam_ : 0.5f;
-filter_.setMorph(morph);
-```
-
-## Collaboration & Protocols
-- Use `CLAUDE.sessions.md` and `sessions/protocols/*` for task creation/completion/compaction
-- Keep prompts to helper agents short; they inherit session context
-
-— End —
-
+Denormals guard: use your framework’s scoped denormal suppression in processBlock.
+Atomic parameter read example:
+Cache std::atomic<float>* param = state.getRawParameterValue("morph");
+Read in process: const float morph = param ? *param : 0.5f;

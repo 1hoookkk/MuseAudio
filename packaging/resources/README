@@ -1,5 +1,27 @@
-Thanks for installing!
+Muse Audio – Installation Complete
 
-This plugin was made with the Pamplejuce template.
+Thank you for installing Muse.
 
-TODO: Update this text with what you want to show up in your macOS installer.
+What’s included
+- Muse VST3 plugin (Windows + macOS)
+- Muse CLAP plugin (Windows + macOS)
+- Muse Standalone app (optional, Windows only build artifacts)
+
+Default install locations (you can change these during install):
+- Windows VST3: %APPDATA%/VST3/Muse.vst3
+- Windows CLAP: %LOCALAPPDATA%/Programs/Common/CLAP/Muse.clap
+- macOS VST3: /Library/Audio/Plug-Ins/VST3/Muse.vst3
+- macOS CLAP: /Library/Audio/Plug-Ins/CLAP/Muse.clap
+
+Authorization
+Muse does not require a license key. No internet connection is needed.
+
+Support
+If you run into any issues, please open an issue on our GitHub repository:
+https://github.com/1hoookkk/MuseAudio
+
+Release notes and documentation
+- CHANGELOG.md: version history
+- README.md: usage and known issues
+
+Enjoy making music with Muse.

@@ -116,6 +116,9 @@ file(GLOB_RECURSE DspFiles CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/dsp/*.
 
 target_sources(SharedCode INTERFACE ${SourceFiles} ${DspFiles})
 
+# PHASE 5: Psychoacoustic analysis module (header-only)
+target_include_directories(SharedCode INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/modules/psycho-dsp/include")
+
 # Adds a BinaryData target for embedding assets into the binary
 include(Assets)
 

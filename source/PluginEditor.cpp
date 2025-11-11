@@ -407,45 +407,15 @@ void PluginEditor::resized()
 
 void PluginEditor::timerCallback()
 {
-    // Update HalftoneMouth with actual DSP state (not knob values)
+    // Update HalftoneMouth with continuous DSP state (no discrete quantization)
     float audioLevel = processorRef.getAudioLevel();
-    auto vowelShape = processorRef.getCurrentVowelShape();
     float morphValue = *processorRef.getState().getRawParameterValue("morph");
+    int pairIndex = static_cast<int>(*processorRef.getState().getRawParameterValue("pair"));
 
     halftoneMouth.setAudioLevel(audioLevel);
     halftoneMouth.setMorph(morphValue);
-
-    // Map PluginProcessor::VowelShape to HalftoneMouth::Vowel
-    switch (vowelShape)
-    {
-        case PluginProcessor::VowelShape::AA:
-            halftoneMouth.setVowel(HalftoneMouth::Vowel::AA);
-            break;
-        case PluginProcessor::VowelShape::AH:
-            halftoneMouth.setVowel(HalftoneMouth::Vowel::AH);
-            break;
-        case PluginProcessor::VowelShape::EE:
-            halftoneMouth.setVowel(HalftoneMouth::Vowel::EE);
-            break;
-        case PluginProcessor::VowelShape::OH:
-            halftoneMouth.setVowel(HalftoneMouth::Vowel::OH);
-            break;
-        case PluginProcessor::VowelShape::OO:
-            halftoneMouth.setVowel(HalftoneMouth::Vowel::OO);
-            break;
-        case PluginProcessor::VowelShape::Wide:
-            // LOW pair "Wide" → map to AA (wide open mouth)
-            halftoneMouth.setVowel(HalftoneMouth::Vowel::AA);
-            break;
-        case PluginProcessor::VowelShape::Narrow:
-            // LOW pair "Narrow" → map to OO (narrow tight mouth)
-            halftoneMouth.setVowel(HalftoneMouth::Vowel::OO);
-            break;
-        case PluginProcessor::VowelShape::Neutral:
-            // SUB pair "Neutral" → map to AH (neutral mid position)
-            halftoneMouth.setVowel(HalftoneMouth::Vowel::AH);
-            break;
-    }
+    halftoneMouth.setPair(pairIndex);
+    // Note: morph + pair drive continuous vowel template blending inside HalftoneMouth
 
     repaint();
 }

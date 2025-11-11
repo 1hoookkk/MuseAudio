@@ -2,11 +2,16 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
+#include <juce_events/juce_events.h>
 #include <zplane/ZPlaneFilter_fast.h>
 #include <zplane/EMUAuthenticTables.h>
 #include "../dsp/ZPlaneShapes.hpp"
+#include "PresetManager.h"
+#include <psycho/PsychoacousticDescriptors.h>
 
-class PluginProcessor : public juce::AudioProcessor
+// NOTE: Now inherits juce::AsyncUpdater to safely communicate sparse "utterances"
+// from the audio thread to the UI without ever touching UI objects off the message thread.
+class PluginProcessor : public juce::AudioProcessor, private juce::AsyncUpdater
 {
 public:
     PluginProcessor();
@@ -94,6 +99,55 @@ public:
         return nanDetected_.exchange(false, std::memory_order_relaxed);  // Read and clear
     }
 
+    // === PHASE 5: Content-Aware Intelligence ===
+    // Thread-safe psychoacoustic analysis results for auto shape selection
+    // Written by audio thread (processBlock @ 10 Hz), read by UI thread for feedback
+    std::atomic<float> detectedVowelness_ {0.0f};
+    std::atomic<float> detectedMetallicity_ {0.0f};
+    std::atomic<float> detectedWarmth_ {0.0f};
+    std::atomic<float> detectedPunch_ {0.0f};
+    std::atomic<int> suggestedPairIndex_ {0};  // Auto-selected pair (0-3: Vowel/Bell/Low/Sub)
+
+    float getDetectedVowelness() const { return detectedVowelness_.load(std::memory_order_relaxed); }
+    float getDetectedMetallicity() const { return detectedMetallicity_.load(std::memory_order_relaxed); }
+    float getDetectedWarmth() const { return detectedWarmth_.load(std::memory_order_relaxed); }
+    float getDetectedPunch() const { return detectedPunch_.load(std::memory_order_relaxed); }
+    int getSuggestedPairIndex() const { return suggestedPairIndex_.load(std::memory_order_relaxed); }
+
+    // === Synesthetic Intelligence (Phase 4) ===
+    // Public accessor so the Editor could, in future, poll recent spectral features
+    // (currently we only emit sparse textual utterances).
+    struct SpectralFeatures
+    {
+        float peakFrequency = 0.0f;
+        float spectralCentroid = 0.0f;
+        float lowEnergyRatio = 0.0f;
+        float highEnergyRatio = 0.0f;
+        bool hasStrongResonance = false;
+        bool isFlat = false;
+    };
+    SpectralFeatures getLatestSpectralFeatures() const { return latestFeatures_; }
+
+    // Latest delivered textual synesthetic utterance (non-blocking UI poll)
+    juce::String getLatestUtterance() const { return pendingMessage_; }
+
+    // === PHASE 3.1: Performance Monitoring ===
+    // Thread-safe CPU load tracking (JUCE best practice: AudioProcessLoadMeasurer)
+    // UI can poll this at ~10 Hz to display CPU usage metrics
+    float getProcessorLoad() const
+    {
+        return static_cast<float>(loadMeasurer_.getLoadAsPercentage());
+    }
+
+    double getXRunCount() const
+    {
+        return loadMeasurer_.getXRunCount();
+    }
+
+    // === PHASE 4.1: Preset Management ===
+    // Access to preset manager for UI (message thread only)
+    PresetManager& getPresetManager() { return presetManager_; }
+
 private:
     // Parameter state (JUCE 8 best practice: APVTS with cached raw pointers)
     juce::AudioProcessorValueTreeState state_;
@@ -104,6 +158,7 @@ private:
     std::atomic<float>* intensityParam_ = nullptr;
     std::atomic<float>* mixParam_ = nullptr;
     std::atomic<float>* autoMakeupParam_ = nullptr;
+    std::atomic<float>* autoParam_ = nullptr;  // PHASE 5: Auto mode toggle
 
     // DSP engine (validated EngineField implementation)
     emu::ZPlaneFilter_fast filter_;
@@ -127,24 +182,28 @@ private:
     double lastUtteranceTime_ = 0.0;
     double nextUtteranceDelay_ = 60.0;  // Random 30-90 seconds
 
+    // === PHASE 5: Psychoacoustic Analysis Timing ===
+    double lastPsychoAnalysisTime_ = 0.0;
+    static constexpr double psychoAnalysisInterval_ = 0.1;  // 10 Hz analysis rate
+    float smoothedPairTarget_ = 0.0f;  // Exponential smoothing for shape transitions
+
     // Instance-specific random generator (thread-safe usage from prepareToPlay)
     juce::Random instanceRandom_;
 
-    struct SpectralFeatures
-    {
-        float peakFrequency = 0.0f;      // Strongest resonance (Hz)
-        float spectralCentroid = 0.0f;   // Brightness measure
-        float lowEnergyRatio = 0.0f;     // 100-300 Hz relative energy
-        float highEnergyRatio = 0.0f;    // 3-7 kHz relative energy
-        bool hasStrongResonance = false; // Peak > threshold
-        bool isFlat = false;             // Low spectral variance
-    };
+    // Latest snapshot of trivial spectral features (placeholder until full FFT pipeline)
+    SpectralFeatures latestFeatures_{};
 
-    // DISABLED: Thread-unsafe implementations (accessed UI from audio thread)
-    // TODO: Refactor using juce::AsyncUpdater or Timer-based approach
-    // void analyzeAudioAndMaybeSpeak();
-    // SpectralFeatures extractSpectralFeatures(const float* spectrum, int spectrumSize);
-    // juce::String selectSynestheticMessage(const SpectralFeatures& features, float mix);
+    // Async utterance system --------------------------------------------------
+    std::atomic<bool> pendingUtterance_{ false }; // Set by audio thread; consumed on message thread
+    juce::String pendingMessage_;                 // Built on message thread only
+    void handleAsyncUpdate() override;            // Deliver message safely to UI
+    juce::String selectSynestheticMessage(const SpectralFeatures& features, float mix, float intensity);
+
+    // PHASE 3.1: CPU load monitoring (best practice from Context7)
+    juce::AudioProcessLoadMeasurer loadMeasurer_;
+
+    // PHASE 4.1: Preset management (message thread only, never in processBlock)
+    PresetManager presetManager_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginProcessor)
 };

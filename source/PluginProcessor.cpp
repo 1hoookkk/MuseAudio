@@ -7,41 +7,33 @@ static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
-    // PHASE 2: Simplified UX - Remove category selector, add Auto mode
-    layout.add(std::make_unique<juce::AudioParameterBool>(
-        "auto",
-        "Auto",
-        false));  // Default OFF - manual control
-
-    // PHASE 5: Shape pair selector (overridden by auto mode when enabled)
+    // Shape pair selector: 0=Vowel, 1=Bell, 2=Low, 3=Sub
     layout.add(std::make_unique<juce::AudioParameterInt>(
         "pair",
         "Pair",
-        0, 3,  // 0=Vowel, 1=Bell, 2=Low, 3=Sub
-        0));   // Default: Vowel
+        0, 3,
+        0));   // Default: Vowel pair
 
+    // Morph: Continuously interpolates between pair shapes (0.0 = A, 1.0 = B)
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "morph",
         "Morph",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
-        0.5f));  // Neutral position
+        0.5f));  // Start at middle position
 
+    // Intensity: Formant resonance strength (0.0 = bypass, 1.0 = maximum)
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "intensity",
         "Intensity",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
-        0.5f));
+        0.0f));  // Start bypassed for safety
 
+    // Mix: Wet/dry blend (0.0 = 100% dry, 1.0 = 100% wet)
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "mix",
         "Mix",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
-        0.5f));
-
-    layout.add(std::make_unique<juce::AudioParameterBool>(
-        "autoMakeup",
-        "Auto Makeup",
-        true));
+        1.0f));  // Default to 100% wet (effect fully on)
 
     return layout;
 }
@@ -246,40 +238,7 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     float mix = mixParam_ ? static_cast<float>(*mixParam_) : 1.0f;
     // Note: autoMakeup not used in validated filter (always on by design)
 
-    // Calculate vowel shape for UI visualization (RT-safe atomic write)
-    // ARTISTIC INTERPRETATION: 3-stage vowel morphing for enhanced expressiveness
-    // The DSP morphs continuously between two Z-plane shapes (ROM-verified authentic)
-    // The VISUALIZER interprets this as 3 distinct vowel positions for visual feedback
-    // This gives users a more intuitive sense of the formant sweep (AA → AH → EE)
-    VowelShape newVowelShape = VowelShape::AH;  // Default to middle vowel
-    switch (pairIndex)
-    {
-        case 0:  // VOWEL pair: AA → AH → EE (3-stage creative visualization)
-            // Visual interpretation: morph parameter creates vowel journey
-            // morph 0.0-0.33 = AA (dark vowel, back of throat)
-            // morph 0.33-0.67 = AH (neutral vowel, center transition)
-            // morph 0.67-1.0 = EE (bright vowel, front articulation)
-            if (morph < 0.33f)
-                newVowelShape = VowelShape::AA;      // Dark/back vowel dominates
-            else if (morph < 0.67f)
-                newVowelShape = VowelShape::AH;      // Transition/neutral zone
-            else
-                newVowelShape = VowelShape::EE;      // Bright/front vowel dominates
-            break;
-
-        case 1:  // BELL pair: OH → OO (2-stage, rounded vowels)
-            newVowelShape = (morph < 0.5f) ? VowelShape::OH : VowelShape::OO;
-            break;
-
-        case 2:  // LOW pair: Wide → Narrow (2-stage, bandwidth sweep)
-            newVowelShape = (morph < 0.5f) ? VowelShape::Wide : VowelShape::Narrow;
-            break;
-
-        case 3:  // SUB pair: Neutral (sub-bass, non-vocal)
-            newVowelShape = VowelShape::Neutral;
-            break;
-    }
-    currentVowelShape_.store(static_cast<int>(newVowelShape), std::memory_order_relaxed);
+    // Visualizer gets raw morph value for continuous blending (no discrete quantization)
 
     // Check if shape pair changed
     if (pairIndex != lastPairIndex_)
