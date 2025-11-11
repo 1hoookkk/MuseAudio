@@ -63,3 +63,4 @@ build/
 build/
 .vs/
 node_modules/
+build-vs2022/
