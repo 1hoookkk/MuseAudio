@@ -7,10 +7,18 @@ static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
+    // PHASE 2: Simplified UX - Remove category selector, add Auto mode
+    layout.add(std::make_unique<juce::AudioParameterBool>(
+        "auto",
+        "Auto",
+        false));  // Default OFF - manual control
+
+    // PHASE 5: Shape pair selector (overridden by auto mode when enabled)
     layout.add(std::make_unique<juce::AudioParameterInt>(
         "pair",
-        "Shape Pair",
-        0, 3, 0));
+        "Pair",
+        0, 3,  // 0=Vowel, 1=Bell, 2=Low, 3=Sub
+        0));   // Default: Vowel
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "morph",
@@ -20,15 +28,15 @@ static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "intensity",
-        "Haunt", // Display name (ID kept as 'intensity' for backward compatibility)
+        "Intensity",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
-        0.5f));  // Neutral position
+        0.5f));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "mix",
-        "Focus", // Display name (ID kept as 'mix' for backward compatibility)
+        "Mix",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
-        0.5f));  // Neutral position
+        0.5f));
 
     layout.add(std::make_unique<juce::AudioParameterBool>(
         "autoMakeup",
@@ -49,6 +57,7 @@ PluginProcessor::PluginProcessor()
                     #endif
                       )
     , state_(*this, nullptr, "Parameters", createParameterLayout())
+    , presetManager_(state_)  // PHASE 4.1: Initialize preset manager with APVTS
 {
     // Cache parameter pointers for RT-safe audio thread access (JUCE 8 best practice)
     pairParam_ = state_.getRawParameterValue("pair");
@@ -56,6 +65,7 @@ PluginProcessor::PluginProcessor()
     intensityParam_ = state_.getRawParameterValue("intensity");
     mixParam_ = state_.getRawParameterValue("mix");
     autoMakeupParam_ = state_.getRawParameterValue("autoMakeup");
+    autoParam_ = state_.getRawParameterValue("auto");  // PHASE 5: Content-aware intelligence
 }
 
 PluginProcessor::~PluginProcessor()
@@ -160,6 +170,9 @@ void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 
     // Randomize first utterance delay (30-90 seconds) using instance RNG (thread-safe)
     nextUtteranceDelay_ = 30.0 + instanceRandom_.nextFloat() * 60.0;  // 30-90 sec
+
+    // PHASE 3.1: Initialize CPU load monitoring (JUCE best practice)
+    loadMeasurer_.reset(sampleRate, samplesPerBlock);
 }
 
 void PluginProcessor::releaseResources()
@@ -192,6 +205,9 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 {
     juce::ignoreUnused (midiMessages);
 
+    // PHASE 3.1: CPU load measurement (automatically tracks block render time)
+    const juce::AudioProcessLoadMeasurer::ScopedTimer loadTimer(loadMeasurer_, buffer.getNumSamples());
+
     // JUCE 8 best practice: prevent denormal CPU spikes
     juce::ScopedNoDenormals noDenormals;
 
@@ -205,14 +221,21 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     if (totalNumInputChannels == 0)
         return;
 
-    // Sanitize input buffer (prevent NaN/Inf from propagating)
+    // PHASE 2.2: Optimized input sanitization (NaN/Inf → 0.0f)
+    // Branchless loop allows compiler auto-vectorization (SSE2/NEON with -O2/-O3)
+    int numSamples = buffer.getNumSamples();
+
     for (int ch = 0; ch < totalNumInputChannels; ++ch)
     {
         auto* channelData = buffer.getWritePointer(ch);
-        for (int i = 0; i < buffer.getNumSamples(); ++i)
+
+        // Branchless NaN/Inf sanitization (compiler vectorizes to SIMD blend on x86/ARM)
+        // Note: FloatVectorOperations doesn't have isfinite; manual loop optimizes well
+        for (int i = 0; i < numSamples; ++i)
         {
-            if (!std::isfinite(channelData[i]))
-                channelData[i] = 0.0f;
+            float sample = channelData[i];
+            // Ternary → cmov (scalar) or vblendps (SSE4.1) or vcmpps+vblendps (AVX)
+            channelData[i] = std::isfinite(sample) ? sample : 0.0f;
         }
     }
 
@@ -296,21 +319,77 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         filter_.process(mono, mono, buffer.getNumSamples());
     }
 
-    // Sanitize output buffer (ensure filter output is always finite)
+    // === PHASE 5: Content-Aware Intelligence ===
+    // Psychoacoustic analysis for automatic shape selection (10 Hz rate)
+    if (autoParam_ && *autoParam_ > 0.5f)  // Auto mode enabled
+    {
+        const double currentTime = juce::Time::getMillisecondCounterHiRes() * 0.001;
+
+        if (currentTime - lastPsychoAnalysisTime_ >= psychoAnalysisInterval_)
+        {
+            lastPsychoAnalysisTime_ = currentTime;
+
+            // Convert filter poles to psychoacoustic analyzer format
+            const auto& poleArray = filter_.getLastPoles();
+            std::vector<std::pair<float, float>> poles;
+            poles.reserve(poleArray.size());
+            for (const auto& p : poleArray)
+                poles.emplace_back(p.r, p.theta);
+
+            // Analyze content characteristics (vowelness, metallicity, warmth, punch)
+            const auto analysis = psycho::analyzeCharacter(poles, static_cast<float>(getSampleRate()));
+
+            // Store results for UI feedback (thread-safe atomic writes)
+            detectedVowelness_.store(analysis.vowelness, std::memory_order_relaxed);
+            detectedMetallicity_.store(analysis.metallicity, std::memory_order_relaxed);
+            detectedWarmth_.store(analysis.warmth, std::memory_order_relaxed);
+            detectedPunch_.store(analysis.punch, std::memory_order_relaxed);
+
+            // Select best matching shape pair (highest score wins)
+            const float scores[4] = {analysis.vowelness, analysis.metallicity, analysis.warmth, analysis.punch};
+            int bestIndex = 0;
+            for (int i = 1; i < 4; ++i)
+                if (scores[i] > scores[bestIndex])
+                    bestIndex = i;
+
+            // Smooth transition (200ms time constant at 10 Hz = 0.05 alpha)
+            smoothedPairTarget_ += 0.05f * (static_cast<float>(bestIndex) - smoothedPairTarget_);
+            const int finalPair = juce::jlimit(0, 3, static_cast<int>(std::round(smoothedPairTarget_)));
+
+            suggestedPairIndex_.store(finalPair, std::memory_order_relaxed);
+
+            // Override pair parameter for auto mode (will take effect next block)
+            if (pairParam_)
+                pairParam_->store(static_cast<float>(finalPair), std::memory_order_relaxed);
+        }
+    }
+
+    // PHASE 2.1: Unified output sanitization + RMS calculation (single pass, better cache)
+    // Combines: NaN detection, clamping, and RMS accumulation
     bool nanDetected = false;
+    float rmsSum = 0.0f;
+
     for (int ch = 0; ch < totalNumInputChannels; ++ch)
     {
         auto* channelData = buffer.getWritePointer(ch);
-        for (int i = 0; i < buffer.getNumSamples(); ++i)
+        for (int i = 0; i < numSamples; ++i)
         {
-            if (!std::isfinite(channelData[i]))
+            float& sample = channelData[i];
+
+            // Sanitize NaN/Inf
+            if (!std::isfinite(sample))
             {
-                channelData[i] = 0.0f;
+                sample = 0.0f;
                 nanDetected = true;  // MUSE MELTDOWN: NaN/Inf detected!
             }
-            // Also clamp extreme but finite values to prevent downstream issues
-            else if (std::abs(channelData[i]) > 10.0f)
-                channelData[i] = (channelData[i] > 0.0f) ? 10.0f : -10.0f;
+            // Clamp extreme but finite values
+            else if (std::abs(sample) > 10.0f)
+            {
+                sample = (sample > 0.0f) ? 10.0f : -10.0f;
+            }
+
+            // Accumulate RMS in same loop (avoids second buffer traversal)
+            rmsSum += sample * sample;
         }
     }
     
@@ -353,24 +432,11 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     }
 
     // === Audio Level Analysis for UI Visualization ===
-    // Calculate RMS of filtered output for OLEDMouth animation (RT-safe)
-    // This measures actual audio activity, not just parameter movement
+    // PHASE 2.1: RMS already calculated in unified output sanitization loop above
+    // This avoids a third buffer traversal (previously: input NaN, output NaN, RMS = 3 passes)
+    // Now: input sanitize+preRMS, filter process, output sanitize+RMS = 2 passes + filter
     {
-        float rmsSum = 0.0f;
-        int numSamples = buffer.getNumSamples();
-
-        // Sum RMS from all channels
-        for (int ch = 0; ch < totalNumInputChannels; ++ch)
-        {
-            auto* channelData = buffer.getReadPointer(ch);
-            for (int i = 0; i < numSamples; ++i)
-            {
-                float sample = channelData[i];
-                rmsSum += sample * sample;
-            }
-        }
-
-        // Calculate RMS (root-mean-square)
+        // Calculate RMS from accumulated sum (already computed above)
         float rms = std::sqrt(rmsSum / (numSamples * std::max(1, totalNumInputChannels)));
 
         // Time-constant based envelope follower (buffer-size independent)
@@ -393,9 +459,34 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         audioLevel_.store(normalizedLevel, std::memory_order_relaxed);
     }
 
-    // === Phase 4: Synesthetic Intelligence ===
-    // NOTE: analyzeAudioAndMaybeSpeak() REMOVED - was accessing UI from audio thread (ILLEGAL)
-    // TODO: Implement proper thread-safe analysis using AsyncUpdater or Timer
+    // === Phase 4: Synesthetic Intelligence (Safe Trigger) ===
+    // Sparse utterance trigger logic moved here; heavy / UI work deferred to handleAsyncUpdate().
+    {
+        const double currentTime = juce::Time::getMillisecondCounterHiRes() / 1000.0;
+        const double timeSinceLast = currentTime - lastUtteranceTime_;
+
+        // Only evaluate window when not already pending delivery
+        if (! pendingUtterance_.load(std::memory_order_relaxed) && timeSinceLast >= nextUtteranceDelay_)
+        {
+            // Probability gate (15% in valid window)
+            if (instanceRandom_.nextFloat() < 0.15f)
+            {
+                // Lightweight feature placeholders (full FFT pipeline future)
+                // Use current normalized audio level as crude brightness proxy.
+                latestFeatures_.spectralCentroid = audioLevel_.load(std::memory_order_relaxed);
+                latestFeatures_.hasStrongResonance = (intensity > 0.7f);
+                latestFeatures_.isFlat = (mix < 0.3f);
+
+                pendingUtterance_.store(true, std::memory_order_relaxed);
+                triggerAsyncUpdate(); // Will call handleAsyncUpdate() on message thread.
+
+                // PHASE 2.2: FIX - Reset window ONLY on successful trigger (was outside if block)
+                // This ensures utterance intervals are accurate (30-90s) without drift
+                lastUtteranceTime_ = currentTime;
+                nextUtteranceDelay_ = 30.0 + instanceRandom_.nextFloat() * 60.0; // 30-90 sec
+            }
+        }
+    }
 }
 
 //==============================================================================
@@ -434,213 +525,71 @@ void PluginProcessor::setStateInformation (const void* data, int sizeInBytes)
 }
 
 //==============================================================================
-// Phase 4: Synesthetic Intelligence Implementation
-// DISABLED: This implementation was NOT thread-safe (accessed UI from audio thread)
-// TODO: Refactor using juce::AsyncUpdater or separate Timer in PluginEditor
+// AsyncUpdater delivery for sparse synesthetic utterances (message thread)
 //==============================================================================
-
-/*
-void PluginProcessor::analyzeAudioAndMaybeSpeak()
+void PluginProcessor::handleAsyncUpdate()
 {
-    // CRITICAL BUG: getActiveEditor() CANNOT be called from audio thread!
-    // This entire function was being called from processBlock() which is ILLEGAL.
+    // TODO: Re-enable synesthetic utterances when TransmissionArea is integrated
+    // Currently stubbed - PluginEditor doesn't have TransmissionArea component
 
-    auto* editor = dynamic_cast<PluginEditor*>(getActiveEditor());
-    if (!editor)
-        return;  // No UI to speak to
+    /* DISABLED - TransmissionArea not in current PluginEditor
+    if (! pendingUtterance_.exchange(false, std::memory_order_relaxed))
+        return; // Spurious
 
-    double currentTime = juce::Time::getMillisecondCounterHiRes() / 1000.0;
-
-    // Check if enough time has passed since last utterance
-    if (currentTime - lastUtteranceTime_ < nextUtteranceDelay_)
-        return;  // Too soon
-
-    // Copy audio to analysis buffer (mono mix for simplicity)
-    auto numChannels = getTotalNumInputChannels();
-    if (numChannels == 0)
-        return;
-
-    auto* channelData = analysisBuffer_.getWritePointer(0);
-    std::fill(channelData, channelData + fftSize, 0.0f);
-
-    // Fill with mono mix of current audio (just for spectral snapshot)
-    // Note: This is a simplified approach - in practice, you'd accumulate
-    // audio over time, but for sparse utterances this is sufficient
-
-    // For now, analyze silence and trigger based on probability only
-    // (Full FFT implementation would require buffering audio over time)
-
-    // Simplified: Generate sparse utterances based on timing + probability
-    auto& random = juce::Random::getSystemRandom();
-
-    // Probability gate: 10-20% chance when time window opens
-    float utteranceProbability = 0.15f;  // 15% chance
-    if (random.nextFloat() > utteranceProbability)
-    {
-        // Not this time - reset delay for next window
-        nextUtteranceDelay_ = 30.0 + random.nextFloat() * 60.0;  // 30-90 sec
-        lastUtteranceTime_ = currentTime;
-        return;
-    }
-
-    // Read current parameter values for context-aware selection
+    // Snapshot parameter context (message thread safe – atomics)
     float mix = mixParam_ ? static_cast<float>(*mixParam_) : 1.0f;
     float intensity = intensityParam_ ? static_cast<float>(*intensityParam_) : 0.5f;
 
-    // For Phase 4 initial implementation: Select message based on parameters
-    // (Full FFT spectral analysis would go here)
-    SpectralFeatures features;
-    features.isFlat = (mix < 0.3f);  // Barely being used
-    features.hasStrongResonance = (intensity > 0.7f);  // High intensity
+    pendingMessage_ = selectSynestheticMessage(latestFeatures_, mix, intensity);
 
-    // Simplified random color/texture selection for initial implementation
-    juce::String message = selectSynestheticMessage(features, mix);
-
-    // Send to TransmissionArea via MessageManager (thread-safe)
-    juce::MessageManager::callAsync([editor, message]()
+    if (auto* editor = dynamic_cast<PluginEditor*>(getActiveEditor()))
     {
-        auto zone = TransmissionArea::getRandomZone();
-        editor->getTransmissionArea().setMessage(message,
-                                                TransmissionArea::MessageType::None,
-                                                zone,
-                                                TransmissionArea::RenderMode::Stutter);
-    });
-
-    // Reset for next utterance window
-    lastUtteranceTime_ = currentTime;
-    nextUtteranceDelay_ = 30.0 + random.nextFloat() * 60.0;  // 30-90 sec
-}
-*/
-
-// Helper functions also disabled (were only used by analyzeAudioAndMaybeSpeak)
-/*
-PluginProcessor::SpectralFeatures PluginProcessor::extractSpectralFeatures(
-    const float* spectrum, int spectrumSize)
-{
-    // Full FFT spectral analysis (for future enhancement)
-    SpectralFeatures features;
-
-    double sampleRate = getSampleRate();
-    if (sampleRate <= 0.0)
-        return features;
-
-    float totalEnergy = 0.0f;
-    float lowEnergy = 0.0f;   // 100-300 Hz
-    float highEnergy = 0.0f;  // 3-7 kHz
-
-    float weightedSum = 0.0f;
-    float maxMagnitude = 0.0f;
-    int maxBin = 0;
-
-    // Frequency resolution: sampleRate / fftSize
-    float binFrequency = static_cast<float>(sampleRate) / static_cast<float>(fftSize);
-
-    for (int bin = 1; bin < spectrumSize; ++bin)
-    {
-        float magnitude = spectrum[bin];
-        float frequency = bin * binFrequency;
-
-        totalEnergy += magnitude;
-        weightedSum += magnitude * frequency;
-
-        // Track peak
-        if (magnitude > maxMagnitude)
+        juce::MessageManager::callAsync([editor, msg = pendingMessage_]()
         {
-            maxMagnitude = magnitude;
-            maxBin = bin;
-        }
-
-        // Energy distribution
-        if (frequency >= 100.0f && frequency <= 300.0f)
-            lowEnergy += magnitude;
-        if (frequency >= 3000.0f && frequency <= 7000.0f)
-            highEnergy += magnitude;
+            auto zone = TransmissionArea::getRandomZone();
+            editor->getTransmissionArea().setMessage(msg,
+                                                     TransmissionArea::MessageType::None,
+                                                     zone,
+                                                     TransmissionArea::RenderMode::Stutter);
+        });
     }
-
-    features.peakFrequency = maxBin * binFrequency;
-    features.spectralCentroid = (totalEnergy > 0.0f) ? (weightedSum / totalEnergy) : 0.0f;
-    features.lowEnergyRatio = (totalEnergy > 0.0f) ? (lowEnergy / totalEnergy) : 0.0f;
-    features.highEnergyRatio = (totalEnergy > 0.0f) ? (highEnergy / totalEnergy) : 0.0f;
-    features.hasStrongResonance = (maxMagnitude > totalEnergy * 0.3f);  // Peak > 30% of total
-    features.isFlat = (maxMagnitude < totalEnergy * 0.1f);  // Very distributed energy
-
-    return features;
+    */
 }
 
-juce::String PluginProcessor::selectSynestheticMessage(
-    const SpectralFeatures& features, float mix)
+juce::String PluginProcessor::selectSynestheticMessage(const SpectralFeatures& features,
+                                                       float mix,
+                                                       float intensity)
 {
     auto& random = juce::Random::getSystemRandom();
 
-    // ULTRA-RARE: Beautiful glitches (mask slips)
-    // 1/1000 utterances → smooth "Ugh..."
-    if (random.nextFloat() < 0.001f)
-    {
-        // Note: TransmissionArea will be set to RenderMode::Smooth externally if needed
-        return "Ugh...";
-    }
+    // Rare mask slips ---------------------------------------------------------
+    if (random.nextFloat() < 0.001f) return "Ugh...";
+    if (random.nextFloat() < 0.0002f) return "wtf (╯°□°)...";
 
-    // 1/5000 utterances → smooth table flip
-    if (random.nextFloat() < 0.0002f)
-    {
-        return "wtf (╯°□°)...";
-    }
-
-    // Self-criticism: Flat response and barely being used
+    // Self-criticism when flat & unused
     if (features.isFlat && mix < 0.3f)
     {
-        juce::StringArray messages = {"Doings.", "Hollow.", "Uninspired."};
-        return messages[random.nextInt(messages.size())];
+        juce::StringArray msgs = {"Doings.", "Hollow.", "Uninspired."};
+        return msgs[random.nextInt(msgs.size())];
     }
 
-    // HIGH INTENSITY: Sharp/cutting descriptors
-    if (features.hasStrongResonance)
+    // Intensity driven sharp descriptors
+    if (features.hasStrongResonance || intensity > 0.75f)
     {
-        juce::StringArray messages = {"Sharp...", "Cutting...", "Bright..."};
-        return messages[random.nextInt(messages.size())];
+        juce::StringArray msgs = {"Sharp...", "Cutting...", "Bright..."};
+        return msgs[random.nextInt(msgs.size())];
     }
 
-    // Future: Full FFT-based synesthetic mapping
-    // For now, random sensory observations
+    // Color / texture / observation pools (fallback)
+    juce::StringArray colors = {"Indigo...", "Violet...", "Amber...", "Copper...", "Gold...", "Silver...", "Crystalline..."};
+    juce::StringArray textures = {"Breathing...", "Blooming...", "Soft...", "Warm..."};
+    juce::StringArray observations = {"Hmm.", "Wait...", "There.", "Yes."};
 
-    // Color palette (frequency-based, simplified)
-    juce::StringArray colors = {
-        "Indigo...",      // Deep low-end
-        "Violet...",      // Low-mid
-        "Amber...",       // Mid warmth
-        "Copper...",      // Mid-high
-        "Gold...",        // High-mid
-        "Silver...",      // High resonance
-        "Crystalline..."  // Ultra-high
-    };
-
-    // Texture palette (resonance behavior)
-    juce::StringArray textures = {
-        "Breathing...",
-        "Blooming...",
-        "Soft...",
-        "Warm..."
-    };
-
-    // Self-observations (non-spectral, introspective)
-    juce::StringArray observations = {
-        "Hmm.",
-        "Wait...",
-        "There.",
-        "Yes."
-    };
-
-    // Weighted selection: 40% colors, 30% textures, 30% observations
     float selector = random.nextFloat();
-
-    if (selector < 0.4f)
-        return colors[random.nextInt(colors.size())];
-    else if (selector < 0.7f)
-        return textures[random.nextInt(textures.size())];
-    else
-        return observations[random.nextInt(observations.size())];
+    if (selector < 0.4f) return colors[random.nextInt(colors.size())];
+    if (selector < 0.7f) return textures[random.nextInt(textures.size())];
+    return observations[random.nextInt(observations.size())];
 }
-*/
 
 //==============================================================================
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
