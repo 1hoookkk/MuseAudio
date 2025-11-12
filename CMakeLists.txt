@@ -114,10 +114,19 @@ file(GLOB_RECURSE SourceFiles CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/sou
 # Z-plane DSP files
 file(GLOB_RECURSE DspFiles CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/dsp/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/dsp/*.hpp" "${CMAKE_CURRENT_SOURCE_DIR}/dsp/*.h")
 
-target_sources(SharedCode INTERFACE ${SourceFiles} ${DspFiles})
+# Authentic EMU Z-plane implementation (extracted from EMU hardware)
+set(AuthenticEMUFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/new/01_EMU_ZPlane/src/EMU_ZPlane_Vault/AUTHENTIC/core/AuthenticEMUZPlane.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/new/01_EMU_ZPlane/src/emu_extracted/EMUFilter.cpp"
+)
+
+target_sources(SharedCode INTERFACE ${SourceFiles} ${DspFiles} ${AuthenticEMUFiles})
 
 # PHASE 5: Psychoacoustic analysis module (header-only)
 target_include_directories(SharedCode INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/modules/psycho-dsp/include")
+
+# Authentic EMU Z-plane headers (extracted from EMU hardware)
+target_include_directories(SharedCode INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/new/01_EMU_ZPlane/src/emu_extracted")
 
 # Adds a BinaryData target for embedding assets into the binary
 include(Assets)

@@ -130,6 +130,8 @@ bool PresetManager::loadPreset(const juce::String& presetName)
     }
 
     // Load state into APVTS (this updates all parameters)
+    // Note: APVTS atomics update immediately, but DSP coefficients are smoothed over blocks
+    // to prevent clicks/pops from sudden parameter changes
     apvts_.replaceState(state);
 
     DBG("Preset loaded successfully: " + presetFile.getFullPathName());

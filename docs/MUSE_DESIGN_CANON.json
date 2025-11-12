@@ -1,0 +1,495 @@
+{
+  "project": "Muse Audio Plugin",
+  "version": "1.0-canonical",
+  "last_updated": "2025-11-13",
+  "philosophy": {
+    "core_identity": "Portal, not panel. Ghost of Planet Phatt after 30 years in a basement.",
+    "user_experience": "Eavesdropping on Muse working. She's oblivious, just doing.",
+    "technical_truth": "Show actual Z-plane pole positions, not abstract metaphors.",
+    "aesthetic": "Haunted hardware. Corroded. Still working, but different now.",
+    "price_point": "$129 - impulse buy for vibe-aligned users",
+    "addictive_quality": "Slightly broken but better. Like tape stored wrong. Can't stop using it.",
+    "sound_target": "DIMENSIONAL not filtered. Exists in space now."
+  },
+
+  "default_state": {
+    "philosophy": "Users insert effect to HEAR it. Immediate 'whoa' moment required.",
+    "first_load_experience": "Whoa, my sound just got more... dimensional",
+    "parameters": {
+      "pair": {
+        "value": "AUTO",
+        "reason": "Let Muse choose based on input content analysis"
+      },
+      "morph": {
+        "value": 0.25,
+        "reason": "Slightly off pure A - more interesting than 0.0 or 0.5"
+      },
+      "intensity": {
+        "value": 0.33,
+        "reason": "Clear effect, totally safe (pole radius ≈ 0.87), enhanced not changed"
+      },
+      "mix": {
+        "value": 1.0,
+        "reason": "Full wet - they want to hear it. INTENSITY controls amount, not MIX."
+      }
+    },
+    "intensity_philosophy": {
+      "0.0": "True bypass (no phase shift)",
+      "0.33": "Enhanced, not changed (default sweet spot)",
+      "0.66": "Obviously processed",
+      "1.0": "Completely transformed"
+    },
+    "mix_philosophy": "Only for parallel processing workflows. INTENSITY is the 'amount' control."
+  },
+
+  "sound_targets_by_source": {
+    "vocals": {
+      "immediate_quality": "Instant 'expensive mic' quality",
+      "effect": "Subtle formant enhancement at default",
+      "perception": "Not obviously filtered, just 'better'"
+    },
+    "808s_bass": {
+      "immediate_quality": "Adds upper harmonics that were missing",
+      "effect": "Makes phone speakers reproduce bass (psychoacoustic trick)",
+      "perception": "Tightens without thinning"
+    },
+    "synths": {
+      "immediate_quality": "Instant 'analog' warmth at low intensity",
+      "effect": "Morphing adds movement without LFO",
+      "high_intensity": "Instant Blade Runner"
+    },
+    "drums": {
+      "immediate_quality": "Transients stay intact (fast envelope following)",
+      "effect": "Adds 'room' without reverb",
+      "percussion": "Snares get body, kicks get presence"
+    }
+  },
+
+  "auto_mode_content_detection": {
+    "philosophy": "Simplified spectral analysis, fast decisions",
+    "priority_order": [
+      {
+        "condition": "detectPitch() && hasFormants()",
+        "pair": 0,
+        "name": "VOWEL",
+        "use_case": "Anything tonal with formants (vocals, woodwinds)"
+      },
+      {
+        "condition": "spectralDensity() > 0.7",
+        "pair": 1,
+        "name": "BELL",
+        "use_case": "Complex/metallic content (synths, bells, leads)"
+      },
+      {
+        "condition": "fundamentalBelow(200)",
+        "pair": 3,
+        "name": "SUB",
+        "use_case": "Bass content (808s, sub bass, kick drums)"
+      },
+      {
+        "condition": "else (safe default)",
+        "pair": 2,
+        "name": "LOW",
+        "use_case": "Everything else (pads, ambient, percussion)"
+      }
+    ],
+    "detection_methods": {
+      "detectPitch": "YIN or autocorrelation, look for stable fundamental",
+      "hasFormants": "Spectral peak detection in 500Hz-3kHz range",
+      "spectralDensity": "Ratio of energy in upper harmonics",
+      "fundamentalBelow": "Lowest stable frequency component"
+    }
+  },
+
+  "sacred_elements": {
+    "never_change": [
+      {
+        "element": "10 FPS mouth stutter",
+        "reason": "The stutter IS the soul. Not a bug, the personality.",
+        "enforcement": "frameCounter % 6 in PluginEditor timer"
+      },
+      {
+        "element": "Black void + mint phosphor (#D8F3DC)",
+        "reason": "1980s LCD aesthetic. Mint glow on pure black.",
+        "enforcement": "LCD_BG = 0xFF000000, LED_MINT = 0xFFD8F3DC"
+      },
+      {
+        "element": "Vertical 400x600 layout",
+        "reason": "Stand out from horizontal plugins. Scrying mirror orientation.",
+        "enforcement": "setSize(400, 600) non-negotiable"
+      },
+      {
+        "element": "Minimal knob count (3 primary + 1 ghost)",
+        "reason": "No menu diving. Immediate tactile control.",
+        "enforcement": "MORPH, INTENSITY, MIX + ghost HAUNT"
+      },
+      {
+        "element": "Double-pass phosphor bloom",
+        "reason": "Glow layer + sharp dots = authentic CRT aesthetic",
+        "enforcement": "Two render passes in LipHalftone mode"
+      },
+      {
+        "element": "Mix = 1.0 default",
+        "reason": "Users insert effect to HEAR it. INTENSITY controls amount.",
+        "enforcement": "Default value in APVTS parameter creation"
+      }
+    ]
+  },
+
+  "core_architecture": {
+    "mouth_visualization": {
+      "current_flaw": "Mapping continuous Z-plane to discrete vowel shapes",
+      "required_fix": "Direct pole position visualization",
+      "implementation": {
+        "data_source": "PluginProcessor::getLastPoles() from DSP engine",
+        "conversion": "Poles (r, theta) → 60x28 dot grid via radial influence",
+        "formula": "intensity = sum(pole.r * exp(-dist * 5.0)) for each pole",
+        "update_rate": "10 FPS (sacred stutter)",
+        "removes": "AuthenticShapeLoader, vowel templates"
+      },
+      "rationale": "Show users what's ACTUALLY happening in Z-plane, not metaphor"
+    },
+
+    "psychoacoustic_auto_mode": {
+      "purpose": "Plugin listens and chooses best shape pair for content",
+      "killer_feature": "Muse has opinions about your audio",
+      "detection_methods": {
+        "vowelness": "Formant detection for vocals/speech → pair 0 (VOWEL)",
+        "metallicity": "Harmonic density for synths/bells → pair 1 (BELL)",
+        "warmth": "Low/mid balance for bass/pads → pair 2 (LOW)",
+        "sub_content": "Deep bass content → pair 3 (SUB)"
+      },
+      "thresholds": {
+        "vowelness_trigger": 0.7,
+        "metallicity_trigger": 0.6,
+        "warmth_trigger": 0.5
+      },
+      "marketing": "Muse listens to your audio and morphs to complement it",
+      "default_behavior": "Enabled by default (pair = AUTO), user can override"
+    },
+
+    "transparency_requirement": {
+      "intensity_0": "TRUE BYPASS - no phase shift, no processing",
+      "intensity_low": "Transparent enhancement - 'better' not 'different'",
+      "intensity_high": "Obvious transformation - still musical",
+      "mix_1": "Must still be transparent at low intensity"
+    }
+  },
+
+  "parameters": {
+    "primary_knobs": {
+      "MORPH": {
+        "user_mental_model": "Shape of the mouth (vowel changes ah→oo)",
+        "actual_function": "Geodesic pole interpolation in Z-plane",
+        "range": "0.0 to 1.0 continuous",
+        "default": 0.25,
+        "interaction": "Velocity-sensitive drag, double-click reset to 0.25"
+      },
+      "INTENSITY": {
+        "user_mental_model": "How much effect (enhancement to transformation)",
+        "actual_function": "Pole radius (stability boundary approach)",
+        "range": "0.0 (bypass) to 1.0 (full chaos)",
+        "default": 0.33,
+        "danger_zone": "> 0.9 reveals ghost parameter HAUNT",
+        "sweet_spots": {
+          "0.0": "True bypass",
+          "0.33": "Default - enhanced not changed",
+          "0.66": "Obviously processed",
+          "1.0": "Completely transformed"
+        }
+      },
+      "MIX": {
+        "user_mental_model": "Parallel processing blend (advanced users only)",
+        "actual_function": "Wet/dry mix for parallel workflows",
+        "range": "0.0 (dry) to 1.0 (wet)",
+        "default": 1.0,
+        "philosophy": "NOT the 'amount' control - that's INTENSITY"
+      }
+    },
+
+    "ghost_parameter": {
+      "name": "HAUNT",
+      "appearance_condition": "maxPoleRadius > 0.9 (intensity pushed to edge)",
+      "function": "Section saturation/distortion for chaos",
+      "animation": "Fade in alpha += 0.02 per frame when condition met",
+      "position": "Appears below INTENSITY knob",
+      "rationale": "Reward users who push boundaries with hidden power"
+    }
+  },
+
+  "ui_corruption_layer": {
+    "philosophy": "Not pristine hardware. Aged, haunted, corroded but functional.",
+    "elements": {
+      "chassis_burn_marks": {
+        "implementation": "5 random ellipses, black 10% alpha, deterministic seed",
+        "size_range": "30-80px width, 20-50px height",
+        "purpose": "Oxidation, age marks"
+      },
+      "chassis_scratches": {
+        "implementation": "3 vertical path strokes, black 5% alpha",
+        "width": "0.5px",
+        "purpose": "Years of rack mounting wear"
+      },
+      "phosphor_decay": {
+        "per_dot_state": {
+          "targetBrightness": "From DSP calculation",
+          "currentBrightness": "Smoothed with per-dot decay rate",
+          "decayRate": "Random 0.7-1.0 per dot (some lag more)",
+          "stuckCounter": "0.1% chance per frame to freeze 2-3 frames"
+        },
+        "purpose": "Burnt phosphor, failing display authenticity"
+      },
+      "knob_wear_patterns": {
+        "implementation": "Light arc at current value position (finger oils)",
+        "wobble": "sin(value * 17) * 0.5px offset (loose shaft)",
+        "purpose": "Hardware that's been touched, not pristine"
+      },
+      "occasional_glitch": {
+        "trigger": "frameCounter % 1800 == 1799 (every ~30 seconds)",
+        "effects": [
+          "Invert all dots for 1 frame",
+          "Shift mouth 2px off-center",
+          "Flicker chassis color briefly"
+        ],
+        "purpose": "Subtle enough to question if you saw it. Haunted."
+      },
+      "serial_number_badge": {
+        "text": "EMU-Z-1993-MUSE",
+        "position": "Bottom right, barely visible",
+        "font": "Courier 8pt, mint 30% alpha",
+        "purpose": "Lore anchor. This is old hardware."
+      },
+      "stability_led": {
+        "position": "Top left (10, 10), 6px diameter",
+        "colors": {
+          "green": "maxPoleRadius < 0.90 (safe)",
+          "yellow": "maxPoleRadius 0.90-0.93 (warning)",
+          "red": "maxPoleRadius > 0.93 (danger, HAUNT imminent)"
+        },
+        "purpose": "Visual feedback of system stability without text"
+      }
+    }
+  },
+
+  "presets": {
+    "philosophy": "Teach sweet spots through curated starting points",
+    "factory_presets": [
+      {
+        "name": "Vowel Morpher",
+        "use_case": "Vocals, speech processing",
+        "settings": {
+          "pair": 0,
+          "morph": "Automated via input analysis",
+          "intensity": 0.6,
+          "mix": 0.7
+        }
+      },
+      {
+        "name": "Bell Tower",
+        "use_case": "Synth leads, metallic tones",
+        "settings": {
+          "pair": 1,
+          "morph": 0.3,
+          "intensity": 0.8,
+          "mix": 1.0
+        }
+      },
+      {
+        "name": "Sub Presence",
+        "use_case": "808s, deep bass reinforcement",
+        "settings": {
+          "pair": 3,
+          "morph": 0.0,
+          "intensity": 0.4,
+          "mix": 0.5
+        }
+      },
+      {
+        "name": "Breathing Pad",
+        "use_case": "Atmospheric textures, pads",
+        "settings": {
+          "pair": 2,
+          "morph": "Slow LFO (not yet implemented)",
+          "intensity": 0.5,
+          "mix": 0.8
+        }
+      },
+      {
+        "name": "Obviously Monday",
+        "use_case": "Mystery preset (user discovers purpose)",
+        "settings": {
+          "pair": 1,
+          "morph": 0.73,
+          "intensity": 0.42,
+          "mix": 0.88
+        },
+        "muse_comment": "Self-aware, playful, never helpful"
+      },
+      {
+        "name": "Expensive Mic",
+        "use_case": "Vocal enhancement (first load experience demo)",
+        "settings": {
+          "pair": 0,
+          "morph": 0.25,
+          "intensity": 0.33,
+          "mix": 1.0
+        },
+        "note": "Matches default state - shows the magic immediately"
+      }
+    ]
+  },
+
+  "implementation_phases": {
+    "phase_0_defaults_update": {
+      "priority": "IMMEDIATE",
+      "risk": "NONE - just parameter default changes",
+      "changes": [
+        "Set mix default to 1.0 in APVTS parameter creation",
+        "Set morph default to 0.25",
+        "Set intensity default to 0.33",
+        "Document default rationale in code comments"
+      ],
+      "testing": "Load plugin fresh, verify immediate 'whoa' moment",
+      "file_location": "source/PluginProcessor.cpp parameter layout"
+    },
+
+    "phase_1_pole_visualization": {
+      "priority": "HIGH",
+      "risk": "HIGH - breaks existing vowel template system",
+      "changes": [
+        "Add getLastPoles() API to PluginProcessor",
+        "Rewrite HalftoneMouth::renderCPU() for direct pole influence",
+        "Remove AuthenticShapeLoader dependency",
+        "Implement convertPolesToDots() radial falloff calculation"
+      ],
+      "testing": "Verify mouth moves correctly with known pole positions",
+      "rollback_plan": "Keep AuthenticShapeLoader in git history"
+    },
+
+    "phase_2_ui_corruption": {
+      "priority": "MEDIUM",
+      "risk": "LOW - additive only, no breaking changes",
+      "changes": [
+        "Add chassis burn marks + scratches to PluginEditor::paint()",
+        "Implement per-dot phosphor decay in HalftoneMouth",
+        "Add knob wear patterns to drawKnob()",
+        "Add 30-second glitch timing",
+        "Add serial number badge + stability LED"
+      ],
+      "testing": "Visual inspection, verify performance acceptable",
+      "performance_budget": "Max 5% additional paint time"
+    },
+
+    "phase_3_auto_mode_exposure": {
+      "priority": "MEDIUM",
+      "risk": "MEDIUM - requires DSP hooks for psychoacoustic analysis",
+      "changes": [
+        "Expose detectPitch() from psycho-dsp module",
+        "Implement hasFormants() detection",
+        "Implement spectralDensity() analysis",
+        "Implement fundamentalBelow() detection",
+        "Implement auto pair selection logic with priority order",
+        "Add AUTO mode toggle (default ON)"
+      ],
+      "testing": "Test with various input types (vocals, synth, bass, drums)",
+      "fallback": "Manual pair selection remains available"
+    },
+
+    "phase_4_ghost_parameter": {
+      "priority": "LOW",
+      "risk": "HIGH - new parameter = state compatibility issue",
+      "changes": [
+        "Add 'haunt' parameter to APVTS",
+        "Implement fade-in animation when intensity > 0.9",
+        "Wire to section saturation/distortion in DSP",
+        "Add HAUNT knob UI component",
+        "Document migration for existing presets"
+      ],
+      "testing": "Verify state save/load compatibility",
+      "parameter_id": "haunt",
+      "range": "0.0 to 1.0",
+      "default": 0.0,
+      "migration": "Add to all existing presets with default value"
+    }
+  },
+
+  "technical_constraints": {
+    "rt_safety": "No allocation, locks, disk, network, or UI calls from audio thread",
+    "parameter_stability": "Keep IDs and ranges stable across releases",
+    "build_targets": {
+      "windows": "VS2022, Release config, pluginval strict mode",
+      "macos": "Xcode, Release config, codesign + notarize for distribution"
+    },
+    "performance": {
+      "mouth_update": "10 FPS (60 FPS / 6 frames)",
+      "knob_interaction": "60 FPS for smooth feel",
+      "paint_budget": "< 16ms total paint time",
+      "audio_thread": "< 1ms per block at 512 samples/48kHz",
+      "true_bypass": "Intensity 0.0 must be phase-coherent, zero latency"
+    }
+  },
+
+  "marketing_narrative": {
+    "tagline": "A portal to 1993 EMU Z-plane hardware that never existed",
+    "elevator_pitch": "Muse listens to your audio and morphs her mouth to complement it. Vowel shapes for vocals, bell tones for synths, warmth for bass. She knows. You just turn the knobs.",
+    "first_impression": "Whoa, my sound just got more... dimensional",
+    "key_differentiators": [
+      "Psychoacoustic auto-selection (Muse has opinions)",
+      "Direct Z-plane pole visualization (see the math)",
+      "Haunted hardware aesthetic (corroded, glitchy, alive)",
+      "10 FPS stutter (personality over smoothness)",
+      "Ghost parameter (reward boundary-pushers)",
+      "Immediate 'whoa' at default settings"
+    ],
+    "target_audience": "Producers who value mythology over features. People who get the vibe.",
+    "anti_target": "FabFilter users expecting clinical precision and smooth animations",
+    "sound_quality": "Slightly broken but better. Like tape stored wrong."
+  },
+
+  "forbidden_changes": {
+    "never_do": [
+      "Smooth mouth to 60 FPS (kills the soul)",
+      "Add preset browser chrome (keep it minimal)",
+      "Brighten the color palette (stay dark)",
+      "Add multiple displays (one mouth is enough)",
+      "Explain Z-plane theory in UI (mystery > education)",
+      "Remove the glitches (imperfection is the product)",
+      "Make knobs pristine (wear = authenticity)",
+      "Default mix < 1.0 (users insert effect to hear it)",
+      "Make intensity 0.0 anything but true bypass"
+    ]
+  },
+
+  "mythology_anchors": {
+    "emu_z_plane": {
+      "historical_truth": "EMU morpheus Z-plane filter, 1993-2000",
+      "our_fiction": "This specific unit was used in a basement studio, never reset",
+      "evidence": "Serial number EMU-Z-1993-MUSE in bottom right"
+    },
+    "the_seance": {
+      "metaphor": "User doesn't control Muse, they commune with her",
+      "ui_language": "No 'settings' or 'parameters', just presence",
+      "interaction": "Knobs are offerings, not commands"
+    },
+    "planet_phatt_ghost": {
+      "inspiration": "E-MU Planet Phatt (1997) purple aesthetic",
+      "our_twist": "What it became after 30 years alone in darkness",
+      "visual_connection": "Plum chassis → dark teal/moss (oxidation)"
+    },
+    "slightly_broken": {
+      "quality": "Like tape stored wrong - something's off but you can't stop",
+      "addictive_factor": "Makes everything sound dimensional",
+      "first_load": "Immediate 'whoa' moment required"
+    }
+  },
+
+  "open_questions": {
+    "pole_visualization_mapping": "Optimal falloff function for radial influence?",
+    "auto_mode_ui": "Show AUTO toggle or always-on silent background operation?",
+    "haunt_parameter_behavior": "Fade out when intensity drops below 0.85?",
+    "preset_naming_voice": "All presets dismissive/playful like 'Obviously Monday'?",
+    "glitch_intensity": "Current 30-second timing too frequent/rare?",
+    "stability_led_necessity": "Do users need visual stability feedback?",
+    "true_bypass_implementation": "Hard bypass or parameter-driven at intensity 0.0?"
+  }
+}
