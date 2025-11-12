@@ -3,8 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 #include <juce_events/juce_events.h>
-#include <zplane/ZPlaneFilter_fast.h>
-#include <zplane/EMUAuthenticTables.h>
+#include "dsp/MuseZPlaneEngine.h"
 #include "../dsp/ZPlaneShapes.hpp"
 #include "PresetManager.h"
 #include <psycho/PsychoacousticDescriptors.h>
@@ -70,6 +69,22 @@ public:
     {
         return audioLevel_.load(std::memory_order_relaxed);
     }
+
+    bool isDangerModeEnabled() const
+    {
+        return dangerParam_ && dangerParam_->load(std::memory_order_relaxed) > 0.5f;
+    }
+
+    struct ParameterSnapshot
+    {
+        int pair = 0;
+        float morph = 0.5f;
+        float intensity = 0.0f;
+        float mix = 1.0f;
+        float drive = 0.0f;
+    };
+
+    ParameterSnapshot getParameterSnapshot() const { return parameterState_.getSnapshot(); }
 
     // === MUSE PERSONALITY: DSP-Driven State ===
     // Thread-safe DSP state monitoring for personality system
@@ -148,7 +163,60 @@ public:
     // Access to preset manager for UI (message thread only)
     PresetManager& getPresetManager() { return presetManager_; }
 
+    // === PHASE 1: Direct Pole Visualization ===
+    // Thread-safe pole data access for UI visualization (10 FPS timer safe)
+    std::vector<MuseZPlaneEngine::PoleData> getLastPoles() const;
+
 private:
+    struct ParameterState
+    {
+        void prepare(double sampleRate)
+        {
+            morphSmooth_.reset(sampleRate, 0.02);
+            intensitySmooth_.reset(sampleRate, 0.02);
+            mixSmooth_.reset(sampleRate, 0.02);
+            driveSmooth_.reset(sampleRate, 0.02);
+            morphSmooth_.setCurrentAndTargetValue(snapshot_.morph);
+            intensitySmooth_.setCurrentAndTargetValue(snapshot_.intensity);
+            mixSmooth_.setCurrentAndTargetValue(snapshot_.mix);
+            driveSmooth_.setCurrentAndTargetValue(snapshot_.drive);
+        }
+
+        void setTargets(int pair, float morph, float intensity, float mix, float drive)
+        {
+            pairTarget_ = pair;
+            morphSmooth_.setTargetValue(juce::jlimit(0.0f, 1.0f, morph));
+            intensitySmooth_.setTargetValue(juce::jlimit(0.0f, 1.0f, intensity));
+            mixSmooth_.setTargetValue(juce::jlimit(0.0f, 1.0f, mix));
+            driveSmooth_.setTargetValue(drive);
+        }
+
+        ParameterSnapshot consume(int numSamples)
+        {
+            morphSmooth_.skip(numSamples);
+            intensitySmooth_.skip(numSamples);
+            mixSmooth_.skip(numSamples);
+            driveSmooth_.skip(numSamples);
+
+            snapshot_.pair = pairTarget_;
+            snapshot_.morph = morphSmooth_.getCurrentValue();
+            snapshot_.intensity = intensitySmooth_.getCurrentValue();
+            snapshot_.mix = mixSmooth_.getCurrentValue();
+            snapshot_.drive = driveSmooth_.getCurrentValue();
+            return snapshot_;
+        }
+
+        ParameterSnapshot getSnapshot() const { return snapshot_; }
+
+    private:
+        int pairTarget_ = 0;
+        ParameterSnapshot snapshot_{};
+        juce::LinearSmoothedValue<float> morphSmooth_;
+        juce::LinearSmoothedValue<float> intensitySmooth_;
+        juce::LinearSmoothedValue<float> mixSmooth_;
+        juce::LinearSmoothedValue<float> driveSmooth_;
+    };
+
     // Parameter state (JUCE 8 best practice: APVTS with cached raw pointers)
     juce::AudioProcessorValueTreeState state_;
 
@@ -157,14 +225,15 @@ private:
     std::atomic<float>* morphParam_ = nullptr;
     std::atomic<float>* intensityParam_ = nullptr;
     std::atomic<float>* mixParam_ = nullptr;
-    std::atomic<float>* autoMakeupParam_ = nullptr;
-    std::atomic<float>* autoParam_ = nullptr;  // PHASE 5: Auto mode toggle
+    std::atomic<float>* autoParam_ = nullptr;    // PHASE 3: Auto mode toggle
+    std::atomic<float>* dangerParam_ = nullptr;  // PHASE 4: Danger mode
 
-    // DSP engine (validated EngineField implementation)
-    emu::ZPlaneFilter_fast filter_;
+    // DSP engine (unified wrapper for Fast/Authentic modes)
+    MuseZPlaneEngine engine_;
     ZPlaneShapes shapes_;
-
-    int lastPairIndex_ = -1;
+    ParameterState parameterState_;
+    mutable juce::SpinLock poleLock_;
+    std::vector<MuseZPlaneEngine::PoleData> cachedPoleFrame_;
 
     // Audio level smoothing for UI visualization (exponential decay)
     float smoothedLevel_ = 0.0f;

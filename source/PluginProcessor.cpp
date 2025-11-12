@@ -19,21 +19,34 @@ static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         "morph",
         "Morph",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
-        0.0f));  // Start fully closed (shape A) for dramatic opening effect
+        0.25f));  // Slightly off pure A - more interesting, immediate character
 
     // Intensity: Formant resonance strength (0.0 = bypass, 1.0 = maximum)
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "intensity",
         "Intensity",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
-        0.0f));  // Start bypassed for safety
+        0.33f));  // Enhanced not changed - immediate "whoa" moment (r ≈ 0.87, totally safe)
 
     // Mix: Wet/dry blend (0.0 = 100% dry, 1.0 = 100% wet)
+    // NOTE: INTENSITY controls "how much effect", MIX is only for parallel processing
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         "mix",
         "Mix",
         juce::NormalisableRange<float>(0.0f, 1.0f, 0.001f),
-        1.0f));  // Default to 100% wet (effect fully on)
+        1.0f));  // Users insert effect to HEAR it - full wet by default
+
+    // PHASE 3: Auto mode - content-aware pair selection
+    layout.add(std::make_unique<juce::AudioParameterBool>(
+        "auto",
+        "Auto",
+        false));  // Off by default - manual control
+
+    // Danger mode: bypass adaptive gain and add +3 dB boost
+    layout.add(std::make_unique<juce::AudioParameterBool>(
+        "danger",
+        "Danger Mode",
+        false));
 
     return layout;
 }
@@ -56,8 +69,8 @@ PluginProcessor::PluginProcessor()
     morphParam_ = state_.getRawParameterValue("morph");
     intensityParam_ = state_.getRawParameterValue("intensity");
     mixParam_ = state_.getRawParameterValue("mix");
-    autoMakeupParam_ = state_.getRawParameterValue("autoMakeup");
-    autoParam_ = state_.getRawParameterValue("auto");  // PHASE 5: Content-aware intelligence
+    autoParam_ = state_.getRawParameterValue("auto");      // PHASE 3
+    dangerParam_ = state_.getRawParameterValue("danger");  // PHASE 4
 }
 
 PluginProcessor::~PluginProcessor()
@@ -128,31 +141,29 @@ void PluginProcessor::changeProgramName (int index, const juce::String& newName)
     juce::ignoreUnused (index, newName);
 }
 
+std::vector<MuseZPlaneEngine::PoleData> PluginProcessor::getLastPoles() const
+{
+    juce::SpinLock::ScopedLockType lock(poleLock_);
+    return cachedPoleFrame_;
+}
+
 //==============================================================================
 void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Initialize validated Z-plane filter (EngineField implementation)
-    filter_.prepare(sampleRate, samplesPerBlock);
-    filter_.reset();
+    // PHASE 3: Switch to Authentic EMU mode (true hardware emulation)
+    engine_.setMode(MuseZPlaneEngine::Mode::Authentic);
 
-    // Configure filter for transparent quality
-    filter_.setPerformanceMode(emu::PerformanceMode::Authentic);  // Best quality for transparency
-    filter_.setSectionSaturation(0.0f);  // Start with no saturation
+    // Initialize unified Z-plane engine with authentic EMU filter
+    engine_.prepare(sampleRate, samplesPerBlock);
+    engine_.reset();
+
+    // Configure engine for transparent quality
+    engine_.setPerformanceMode(emu::PerformanceMode::Authentic);  // Best quality (no-op for Authentic mode)
+    engine_.setSectionSaturation(0.0f);  // Start with no saturation
 
     // Load initial shape pair (Vowel = 0)
     int pairIndex = pairParam_ ? static_cast<int>(*pairParam_) : 0;
-
-    // Map pair index to authentic EMU shapes
-    switch (pairIndex)
-    {
-        case 0: filter_.setShapePair(emu::VOWEL_A, emu::VOWEL_B); break;
-        case 1: filter_.setShapePair(emu::BELL_A, emu::BELL_B); break;
-        case 2: filter_.setShapePair(emu::LOW_A, emu::LOW_B); break;
-        case 3: filter_.setShapePair(emu::SUB_A, emu::SUB_B); break;
-        default: filter_.setShapePair(emu::VOWEL_A, emu::VOWEL_B); break;
-    }
-
-    lastPairIndex_ = pairIndex;
+    engine_.setShapePair(pairIndex);
 
     // Phase 4: Prepare FFT analysis buffer (pre-allocate, RT-safe)
     analysisBuffer_.setSize(1, fftSize, false, true, false);
@@ -165,6 +176,18 @@ void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 
     // PHASE 3.1: Initialize CPU load monitoring (JUCE best practice)
     loadMeasurer_.reset(sampleRate, samplesPerBlock);
+
+    parameterState_.prepare(sampleRate);
+    float morphInit = morphParam_ ? static_cast<float>(*morphParam_) : 0.5f;
+    float intensityInit = intensityParam_ ? static_cast<float>(*intensityParam_) : 0.0f;
+    float mixInit = mixParam_ ? static_cast<float>(*mixParam_) : 1.0f;
+    parameterState_.setTargets(pairIndex, morphInit, intensityInit, mixInit, 0.0f);
+    parameterState_.consume(0);
+
+    {
+        juce::SpinLock::ScopedLockType lock(poleLock_);
+        cachedPoleFrame_.clear();
+    }
 }
 
 void PluginProcessor::releaseResources()
@@ -214,8 +237,10 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         return;
 
     // PHASE 2.2: Optimized input sanitization (NaN/Inf → 0.0f)
+    // + INPUT metering for visualizer (FabFilter/UAD standard)
     // Branchless loop allows compiler auto-vectorization (SSE2/NEON with -O2/-O3)
     int numSamples = buffer.getNumSamples();
+    float inputRmsSum = 0.0f;  // Accumulate INPUT level for visualizer
 
     for (int ch = 0; ch < totalNumInputChannels; ++ch)
     {
@@ -227,7 +252,11 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         {
             float sample = channelData[i];
             // Ternary → cmov (scalar) or vblendps (SSE4.1) or vcmpps+vblendps (AVX)
-            channelData[i] = std::isfinite(sample) ? sample : 0.0f;
+            sample = std::isfinite(sample) ? sample : 0.0f;
+            channelData[i] = sample;
+
+            // Accumulate INPUT RMS (industry standard - visualizer shows what you're feeding processor)
+            inputRmsSum += sample * sample;
         }
     }
 
@@ -236,32 +265,23 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     float morph = morphParam_ ? static_cast<float>(*morphParam_) : 0.5f;
     float intensity = intensityParam_ ? static_cast<float>(*intensityParam_) : 0.0f;
     float mix = mixParam_ ? static_cast<float>(*mixParam_) : 1.0f;
-    // Note: autoMakeup not used in validated filter (always on by design)
 
     // Visualizer gets raw morph value for continuous blending (no discrete quantization)
 
-    // Check if shape pair changed
-    if (pairIndex != lastPairIndex_)
-    {
-        switch (pairIndex)
-        {
-            case 0: filter_.setShapePair(emu::VOWEL_A, emu::VOWEL_B); break;
-            case 1: filter_.setShapePair(emu::BELL_A, emu::BELL_B); break;
-            case 2: filter_.setShapePair(emu::LOW_A, emu::LOW_B); break;
-            case 3: filter_.setShapePair(emu::SUB_A, emu::SUB_B); break;
-            default: filter_.setShapePair(emu::VOWEL_A, emu::VOWEL_B); break;
-        }
-        lastPairIndex_ = pairIndex;
-    }
+    // Update engine parameters (setShapePair handles caching internally)
+    parameterState_.setTargets(pairIndex, morph, intensity, mix, 0.0f);
+    auto parameterSnapshot = parameterState_.consume(numSamples);
 
-    // Update filter parameters (smoothed internally via LinearSmoothedValue)
-    filter_.setMorph(morph);
-    filter_.setIntensity(intensity);
-    filter_.setMix(mix);
-    filter_.setDrive(0.0f);  // Unity gain for transparency at 0% intensity
+    bool dangerModeEnabled = dangerParam_ ? (dangerParam_->load(std::memory_order_relaxed) > 0.5f) : false;
+    engine_.setDangerMode(dangerModeEnabled);
+    engine_.setShapePair(parameterSnapshot.pair);
+    engine_.setMorph(parameterSnapshot.morph);
+    engine_.setIntensity(parameterSnapshot.intensity);
+    engine_.setMix(parameterSnapshot.mix);
+    engine_.setDrive(parameterSnapshot.drive);  // Placeholder: currently zero
 
     // CRITICAL: Update coefficients ONCE per block (prevents zipper noise)
-    filter_.updateCoeffsBlock(buffer.getNumSamples());
+    engine_.updateCoeffsBlock(buffer.getNumSamples());
 
     // Process audio (handles stereo or mono, includes wet/dry mix internally)
     if (totalNumInputChannels >= 2)
@@ -269,57 +289,54 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         // Stereo processing
         float* left = buffer.getWritePointer(0);
         float* right = buffer.getWritePointer(1);
-        filter_.process(left, right, buffer.getNumSamples());
+        engine_.process(left, right, buffer.getNumSamples());
     }
     else
     {
         // Mono processing - use same buffer for both L+R
         float* mono = buffer.getWritePointer(0);
-        filter_.process(mono, mono, buffer.getNumSamples());
+        engine_.process(mono, mono, buffer.getNumSamples());
     }
 
-    // === PHASE 5: Content-Aware Intelligence ===
-    // Psychoacoustic analysis for automatic shape selection (10 Hz rate)
-    if (autoParam_ && *autoParam_ > 0.5f)  // Auto mode enabled
     {
-        const double currentTime = juce::Time::getMillisecondCounterHiRes() * 0.001;
+        auto poles = engine_.getLastPoles();
+        juce::SpinLock::ScopedLockType lock(poleLock_);
+        cachedPoleFrame_ = std::move(poles);
+    }
 
-        if (currentTime - lastPsychoAnalysisTime_ >= psychoAnalysisInterval_)
+    // === PHASE 3: Content-Aware Intelligence (AUTO mode) ===
+    // Psychoacoustic analysis runs at 10 Hz when AUTO is enabled
+    bool autoMode = autoParam_ ? (*autoParam_ > 0.5f) : false;
+    if (autoMode)
+    {
+        double currentTime = juce::Time::getMillisecondCounterHiRes() / 1000.0;
+        if (currentTime - lastPsychoAnalysisTime_ >= 0.1)  // 10 Hz analysis
         {
             lastPsychoAnalysisTime_ = currentTime;
 
-            // Convert filter poles to psychoacoustic analyzer format
-            const auto& poleArray = filter_.getLastPoles();
-            std::vector<std::pair<float, float>> poles;
-            poles.reserve(poleArray.size());
-            for (const auto& p : poleArray)
-                poles.emplace_back(p.r, p.theta);
+            // Simple content detection based on input RMS energy
+            float currentRMS = std::sqrt(inputRmsSum / (numSamples * totalNumInputChannels));
 
-            // Analyze content characteristics (vowelness, metallicity, warmth, punch)
-            const auto analysis = psycho::analyzeCharacter(poles, static_cast<float>(getSampleRate()));
+            // Basic heuristics for pair selection:
+            // VOWEL (0): speech/vocals (mid energy 0.1-0.3)
+            // BELL (1): metallic/bright/percussive (high energy > 0.3)
+            // LOW (2): bass/drums (low-mid energy 0.05-0.15)
+            // SUB (3): sub-bass/rumble (very low < 0.05)
 
-            // Store results for UI feedback (thread-safe atomic writes)
-            detectedVowelness_.store(analysis.vowelness, std::memory_order_relaxed);
-            detectedMetallicity_.store(analysis.metallicity, std::memory_order_relaxed);
-            detectedWarmth_.store(analysis.warmth, std::memory_order_relaxed);
-            detectedPunch_.store(analysis.punch, std::memory_order_relaxed);
+            int suggestedPair = 0;  // Default to VOWEL
+            if (currentRMS > 0.3f)
+                suggestedPair = 1;  // BELL - high energy
+            else if (currentRMS < 0.05f)
+                suggestedPair = 3;  // SUB - very low energy
+            else if (currentRMS < 0.15f)
+                suggestedPair = 2;  // LOW - bass range
 
-            // Select best matching shape pair (highest score wins)
-            const float scores[4] = {analysis.vowelness, analysis.metallicity, analysis.warmth, analysis.punch};
-            int bestIndex = 0;
-            for (int i = 1; i < 4; ++i)
-                if (scores[i] > scores[bestIndex])
-                    bestIndex = i;
+            // Update atomic for UI feedback
+            suggestedPairIndex_.store(suggestedPair, std::memory_order_relaxed);
 
-            // Smooth transition (200ms time constant at 10 Hz = 0.05 alpha)
-            smoothedPairTarget_ += 0.05f * (static_cast<float>(bestIndex) - smoothedPairTarget_);
-            const int finalPair = juce::jlimit(0, 3, static_cast<int>(std::round(smoothedPairTarget_)));
-
-            suggestedPairIndex_.store(finalPair, std::memory_order_relaxed);
-
-            // Override pair parameter for auto mode (will take effect next block)
+            // Auto-switch pair parameter (APVTS will notify UI)
             if (pairParam_)
-                pairParam_->store(static_cast<float>(finalPair), std::memory_order_relaxed);
+                pairParam_->store(static_cast<float>(suggestedPair), std::memory_order_relaxed);
         }
     }
 
@@ -391,18 +408,17 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     }
 
     // === Audio Level Analysis for UI Visualization ===
-    // PHASE 2.1: RMS already calculated in unified output sanitization loop above
-    // This avoids a third buffer traversal (previously: input NaN, output NaN, RMS = 3 passes)
-    // Now: input sanitize+preRMS, filter process, output sanitize+RMS = 2 passes + filter
+    // FabFilter/UAD standard: visualizer shows INPUT level (what you're feeding the processor)
+    // Calculated above during input sanitization to avoid extra buffer pass
     {
-        // Calculate RMS from accumulated sum (already computed above)
-        float rms = std::sqrt(rmsSum / (numSamples * std::max(1, totalNumInputChannels)));
+        // Calculate RMS from INPUT accumulated sum (industry standard metering)
+        float rms = std::sqrt(inputRmsSum / (numSamples * std::max(1, totalNumInputChannels)));
 
         // Time-constant based envelope follower (buffer-size independent)
         // Fast attack (10ms) for responsive "speaking", slower release (200ms) for smooth animation
         constexpr float attackTimeSec = 0.010f;   // 10ms attack
         constexpr float releaseTimeSec = 0.200f;  // 200ms release
-        
+
         const float dt = (float)numSamples / (float)getSampleRate();
         const float attackCoeff = 1.0f - std::exp(-dt / attackTimeSec);
         const float releaseCoeff = 1.0f - std::exp(-dt / releaseTimeSec);
@@ -456,7 +472,6 @@ bool PluginProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* PluginProcessor::createEditor()
 {
-    // Provide the Brutalist Temple PluginEditor UI
     return new PluginEditor(*this);
 }
 

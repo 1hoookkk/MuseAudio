@@ -10,7 +10,10 @@ PluginEditor::PluginEditor(PluginProcessor& p)
       processorRef(p)
 {
     // Add HalftoneMouth visualizer (shows actual DSP vowel shapes)
-    halftoneMouth.setTintColor(juce::Colour(LED_MINT));
+    // Steel grey tint for dark dots on lime LCD (retro hardware look)
+    halftoneMouth.setTintColor(juce::Colour(0xFF3B4A52));
+    // Dense almond lip with superellipse SDF (thousands of dots)
+    halftoneMouth.setStyle(HalftoneMouth::Style::LipHalftone);
     addAndMakeVisible(halftoneMouth);
 
     // PHASE 1.2: Melatonin Inspector - debug builds only (saves ~300KB in release)
@@ -52,75 +55,41 @@ PluginEditor::PluginEditor(PluginProcessor& p)
     mixAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         processorRef.getState(), "mix", mixKnob);
 
-    // Auto mode button (content-aware intelligence toggle)
+    // PHASE 3: AUTO mode toggle (content-aware pair selection)
     autoButton.setClickingTogglesState(true);
-    autoButton.onClick = [this]() { repaint(); };
-    autoButton.setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
-    autoButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(LED_MINT).withAlpha(0.2f));
-    autoButton.setColour(juce::TextButton::textColourOffId, juce::Colour(LED_MINT).withAlpha(0.6f));
+    autoButton.setColour(juce::TextButton::buttonColourId, juce::Colour(CHASSIS_MOSS).darker(0.3f));
+    autoButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(LED_MINT).withAlpha(0.3f));
+    autoButton.setColour(juce::TextButton::textColourOffId, juce::Colour(LED_MINT).withAlpha(0.5f));
     autoButton.setColour(juce::TextButton::textColourOnId, juce::Colour(LED_MINT));
     addAndMakeVisible(autoButton);
+
     autoAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
         processorRef.getState(), "auto", autoButton);
 
-    // Pair badge label (shows active shape pair: VOWEL/BELL/LOW/SUB)
-    pairBadgeLabel.setText("[VOWEL]", juce::dontSendNotification);
-    pairBadgeLabel.setFont(juce::FontOptions(10.0f, juce::Font::bold));
-    pairBadgeLabel.setColour(juce::Label::textColourId, juce::Colour(LED_MINT).withAlpha(0.8f));
     pairBadgeLabel.setJustificationType(juce::Justification::centred);
+    pairBadgeLabel.setFont(juce::Font(11.0f));
+    pairBadgeLabel.setColour(juce::Label::textColourId, juce::Colour(LED_MINT).withAlpha(0.8f));
+    pairBadgeLabel.setText("MANUAL", juce::dontSendNotification);
     addAndMakeVisible(pairBadgeLabel);
 
-    // Preset combo box
-    presetComboBox.setTextWhenNothingSelected("-- PRESETS --");
-    presetComboBox.setTextWhenNoChoicesAvailable("No presets");
-    presetComboBox.setColour(juce::ComboBox::backgroundColourId, juce::Colour(CHASSIS_MOSS).darker(0.5f));
-    presetComboBox.setColour(juce::ComboBox::textColourId, juce::Colour(LED_MINT));
-    presetComboBox.setColour(juce::ComboBox::outlineColourId, juce::Colour(LED_MINT).withAlpha(0.3f));
-    presetComboBox.setColour(juce::ComboBox::arrowColourId, juce::Colour(LED_MINT));
-    presetComboBox.onChange = [this]() {
-        auto presetName = presetComboBox.getText();
-        if (presetName.isNotEmpty())
-            processorRef.getPresetManager().loadPreset(presetName);
-    };
-    addAndMakeVisible(presetComboBox);
+    dangerButton.setClickingTogglesState(true);
+    dangerButton.setColour(juce::TextButton::buttonColourId, juce::Colour::fromRGB(60, 20, 20));
+    dangerButton.setColour(juce::TextButton::buttonOnColourId, juce::Colours::red.withAlpha(0.4f));
+    dangerButton.setColour(juce::TextButton::textColourOffId, juce::Colour(LED_MINT).withAlpha(0.6f));
+    dangerButton.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
+    dangerButton.setTooltip("Danger Mode bypasses adaptive gain and adds +3 dB boost");
+    addAndMakeVisible(dangerButton);
 
-    // Save preset button
-    savePresetButton.setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
-    savePresetButton.setColour(juce::TextButton::textColourOffId, juce::Colour(LED_MINT).withAlpha(0.7f));
-    savePresetButton.onClick = [this]() { showSavePresetDialog(); };
-    addAndMakeVisible(savePresetButton);
-
-    // Delete preset button
-    deletePresetButton.setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
-    deletePresetButton.setColour(juce::TextButton::textColourOffId, juce::Colour(LED_MINT).withAlpha(0.5f));
-    deletePresetButton.onClick = [this]() {
-        auto presetName = presetComboBox.getText();
-        if (presetName.isNotEmpty())
-        {
-            juce::AlertWindow::showOkCancelBox(
-                juce::AlertWindow::QuestionIcon,
-                "Delete Preset",
-                "Delete preset '" + presetName + "'?",
-                "Delete", "Cancel",
-                nullptr,
-                juce::ModalCallbackFunction::create([this, presetName](int result) {
-                    if (result == 1)
-                    {
-                        processorRef.getPresetManager().deletePreset(presetName);
-                        refreshPresetList();
-                    }
-                }));
-        }
-    };
-    addAndMakeVisible(deletePresetButton);
-
-    // Load initial preset list
-    refreshPresetList();
+    dangerAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+        processorRef.getState(), "danger", dangerButton);
 
     // PHASE 1.1: Pre-render powder coat texture for performance (95% paint time reduction)
     regeneratePowderCoatTexture(400, 600);
 
-    startTimerHz(30);
+    // PHASE 2: Pre-render chassis corruption (burn marks, scratches, wear)
+    regenerateChassisCorruption(400, 600);
+
+    startTimerHz(60);  // 60 FPS for smooth knob interaction; mouth throttled to 10 FPS
     setSize(400, 600);
 }
 
@@ -143,17 +112,108 @@ void PluginEditor::regeneratePowderCoatTexture(int width, int height)
         g.fillRect(x, y, 1.0f, 1.0f);
     }
 }
+
+void PluginEditor::regenerateChassisCorruption(int width, int height)
+{
+    // PHASE 2: Procedural burn marks, scratches, and wear (EMU hardware character)
+    // Deterministic seed 1993 (EMU Z-Plane year) for consistent appearance
+    cachedChassisCorruption_ = juce::Image(juce::Image::ARGB, width, height, true);
+    juce::Graphics g(cachedChassisCorruption_);
+    juce::Random random(1993);
+
+    // === BURN MARKS (3-5 organic scorched areas) ===
+    int burnCount = random.nextInt(juce::Range<int>(3, 6));
+    for (int i = 0; i < burnCount; ++i)
+    {
+        float x = random.nextFloat() * width;
+        float y = random.nextFloat() * height;
+        float size = 15.0f + random.nextFloat() * 25.0f;  // 15-40px
+        float alpha = 0.08f + random.nextFloat() * 0.12f;  // Subtle dark stain
+
+        // Organic irregular shape (multiple overlapping circles)
+        for (int j = 0; j < 5; ++j)
+        {
+            float offsetX = (random.nextFloat() - 0.5f) * size * 0.6f;
+            float offsetY = (random.nextFloat() - 0.5f) * size * 0.6f;
+            float subSize = size * (0.6f + random.nextFloat() * 0.4f);
+
+            g.setColour(juce::Colours::black.withAlpha(alpha * (0.5f + random.nextFloat() * 0.5f)));
+            g.fillEllipse(x + offsetX - subSize/2, y + offsetY - subSize/2, subSize, subSize);
+        }
+    }
+
+    // === SCRATCHES (8-12 thin random lines) ===
+    int scratchCount = random.nextInt(juce::Range<int>(8, 13));
+    for (int i = 0; i < scratchCount; ++i)
+    {
+        float x1 = random.nextFloat() * width;
+        float y1 = random.nextFloat() * height;
+        float angle = random.nextFloat() * juce::MathConstants<float>::twoPi;
+        float length = 20.0f + random.nextFloat() * 60.0f;  // 20-80px
+        float x2 = x1 + std::cos(angle) * length;
+        float y2 = y1 + std::sin(angle) * length;
+        float alpha = 0.05f + random.nextFloat() * 0.08f;
+
+        g.setColour(juce::Colours::black.withAlpha(alpha));
+        g.drawLine(x1, y1, x2, y2, 0.8f);  // Thin scratch
+    }
+
+    // === WEAR SPOTS (knob areas - subtle darkening) ===
+    // Top row knobs: MORPH (90, 250), INTENSITY (238, 250)
+    // Bottom knob: MIX (164, 400)
+    std::array<juce::Point<float>, 3> knobCenters = {
+        juce::Point<float>(90 + 36, 250 + 36),   // MORPH center
+        juce::Point<float>(238 + 36, 250 + 36),  // INTENSITY center
+        juce::Point<float>(164 + 36, 400 + 36)   // MIX center
+    };
+
+    for (const auto& center : knobCenters)
+    {
+        float wearRadius = 45.0f + random.nextFloat() * 10.0f;
+        g.setColour(juce::Colours::black.withAlpha(0.04f));
+        g.fillEllipse(center.x - wearRadius, center.y - wearRadius,
+                      wearRadius * 2, wearRadius * 2);
+    }
+}
+
+void PluginEditor::drawChassisCorruption(juce::Graphics& g, juce::Rectangle<float> bounds)
+{
+    // Draw cached corruption texture (called once per paint)
+    if (cachedChassisCorruption_.isValid())
+        g.drawImageAt(cachedChassisCorruption_, 0, 0);
+}
+
 void PluginEditor::drawOLEDGlowText(juce::Graphics& g, const juce::String& text,
                                    juce::Rectangle<int> area, float baseAlpha,
                                    juce::Justification just, juce::Font font)
 {
+    // Subtle OLED glow (CSS: text-shadow: 0 0 2px, 0 0 5px, 0 0 8px)
     auto mint = juce::Colour(LED_MINT);
     auto savedFont = g.getCurrentFont();
     g.setFont(font);
-    g.setColour(mint.withAlpha(0.4f * baseAlpha));
+
+    // Outer glow (8px - very subtle)
+    g.setColour(mint.withAlpha(0.15f * baseAlpha));
+    g.drawText(text, area.translated(-2, -2), just);
+    g.drawText(text, area.translated(2, 2), just);
+    g.drawText(text, area.translated(-2, 2), just);
+    g.drawText(text, area.translated(2, -2), just);
+
+    // Middle glow (5px)
+    g.setColour(mint.withAlpha(0.25f * baseAlpha));
+    g.drawText(text, area.translated(-1, -1), just);
+    g.drawText(text, area.translated(1, 1), just);
+    g.drawText(text, area.translated(-1, 1), just);
+    g.drawText(text, area.translated(1, -1), just);
+
+    // Inner glow (2px)
+    g.setColour(mint.withAlpha(0.35f * baseAlpha));
     g.drawText(text, area.translated(0, -1), just);
-    g.setColour(mint.withAlpha(0.3f * baseAlpha));
     g.drawText(text, area.translated(0, 1), just);
+    g.drawText(text, area.translated(-1, 0), just);
+    g.drawText(text, area.translated(1, 0), just);
+
+    // Core text (bright mint)
     g.setColour(mint.withAlpha(1.0f * baseAlpha));
     g.drawText(text, area, just);
     g.setFont(savedFont);
@@ -168,7 +228,7 @@ void PluginEditor::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
 
-    // ===== CHASSIS =====
+    // ===== CHASSIS - Dark Teal (#2F4F4F) =====
     g.fillAll(juce::Colour(CHASSIS_MOSS));
 
     // PHASE 1.1: Powder-coat texture overlay (cached - 95% faster)
@@ -177,47 +237,51 @@ void PluginEditor::paint(juce::Graphics& g)
     else
         drawPowderCoatTexture(g, bounds); // Fallback (shouldn't happen)
 
+    // PHASE 2: Chassis corruption overlay (burn marks, scratches, wear)
+    drawChassisCorruption(g, bounds);
+
     // ===== HEADER - "MUSE" =====
     {
+        // Sans-serif bold, 16px, very wide letter-spacing
         juce::Font titleFont(juce::FontOptions().withHeight(16.0f).withStyle("Bold"));
-        drawOLEDGlowText(g, "MUSE", {0, 24, 400, 20}, 1.0f, juce::Justification::centred,
-                         titleFont);
+        titleFont.setExtraKerningFactor(0.25f); // tracking-[0.2em] = 25% extra spacing
+        drawOLEDGlowText(g, "M U S E", juce::Rectangle<int>(0, 24, 400, 20), 1.0f,
+                         juce::Justification::centred, titleFont);
     }
 
-    // ===== BLACK DISPLAY PANEL (HalftoneMouth renders inside) =====
+    drawStatusLED(g);
+
+    // ===== BLACK LCD DISPLAY PANEL (HalftoneMouth renders inside) =====
     juce::Rectangle<float> displayPanel(24, 60, 352, 150);
 
-    // Pure black panel background
-    g.setColour(juce::Colours::black);
+    // Beveled panel border (inset 3D effect)
+    // Outer highlight (top/left - catching light)
+    g.setColour(juce::Colour(KNOB_INSET_LIGHT).withAlpha(0.4f));
+    g.drawRoundedRectangle(displayPanel.expanded(2.0f), 2.0f, 2.0f);
+
+    // Inner shadow (bottom/right - recessed)
+    g.setColour(juce::Colour(KNOB_INSET_DARK));
+    g.drawRoundedRectangle(displayPanel.expanded(1.0f), 2.0f, 1.5f);
+
+    // Lime green LCD background (retro hardware aesthetic)
+    g.setColour(juce::Colour(LCD_LIME));
     g.fillRoundedRectangle(displayPanel, 2.0f);
 
-    // Inner shadow (recessed look)
-    g.setColour(juce::Colours::black.withAlpha(0.6f));
-    g.drawRoundedRectangle(displayPanel.reduced(1.0f), 2.0f, 2.0f);
+    // Deep inner shadow (recessed glass look)
+    g.setColour(juce::Colours::black.withAlpha(0.7f));
+    g.drawRoundedRectangle(displayPanel.reduced(1.0f), 2.0f, 1.5f);
 
-    // ===== OLED HORIZONTAL GLOW LINE (center of display) =====
+    // HalftoneMouth component renders the procedural dot matrix mouth here
+    // (Component paints itself via renderCPU(), bounds set in resized())
+
+    // PHASE 2: Serial number badge (faded hardware ID)
     {
-        const float lineHeight = 4.0f;
-        const float centerY = displayPanel.getCentreY();
-        auto coreLine = juce::Rectangle<float>(displayPanel.getX() + 8.0f,
-                                               centerY - lineHeight * 0.5f,
-                                               displayPanel.getWidth() - 16.0f,
-                                               lineHeight);
-
-        // Outer glow
-        g.setColour(juce::Colour(LED_MINT).withAlpha(0.30f));
-        g.fillRoundedRectangle(coreLine.expanded(0.0f, 4.0f), 2.0f);
-
-        // Middle glow
-        g.setColour(juce::Colour(LED_MINT).withAlpha(0.20f));
-        g.fillRoundedRectangle(coreLine.expanded(0.0f, 2.0f), 2.0f);
-
-        // Core line
-        g.setColour(juce::Colour(LED_MINT));
-        g.fillRoundedRectangle(coreLine, 2.0f);
+        juce::Font serialFont(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(), 8.0f, juce::Font::plain));
+        g.setFont(serialFont);
+        g.setColour(juce::Colour(LED_MINT).withAlpha(0.15f));  // Very faded
+        g.drawText("EMU-Z-1993-MUSE", juce::Rectangle<int>(0, 560, 400, 12),
+                   juce::Justification::centred);
     }
-
-    // HalftoneMouth component renders the actual DSP vowel shapes here
 
     // ===== KNOBS =====
     float morphVal = (float)morphKnob.getValue();
@@ -225,50 +289,54 @@ void PluginEditor::paint(juce::Graphics& g)
     float mixVal = (float)mixKnob.getValue();
 
     // Top row: MORPH and INTENSITY (72×72 per code.html)
-    drawKnob(g, {90, 250, 72, 72}, morphVal, "MORPH");
-    drawKnob(g, {238, 250, 72, 72}, intensityVal, "INTENSITY");
+    drawKnob(g, {90, 250, 72, 72}, morphVal, "MORPH", 0);
+    drawKnob(g, {238, 250, 72, 72}, intensityVal, "INTENSITY", 1);
 
     // Bottom row: MIX (centered, 72×72 per code.html)
-    drawKnob(g, {164, 400, 72, 72}, mixVal, "MIX");
+    drawKnob(g, {164, 400, 72, 72}, mixVal, "MIX", 2);
 
-    // ===== FOOTER =====
-    // Subtle border line
-    g.setColour(juce::Colour(0xFF3A5A5A));
-    g.drawHorizontalLine(520, 24.0f, 376.0f);
+}
 
-    // Muse status message (DSP-driven state)
+void PluginEditor::drawStatusLED(juce::Graphics& g)
+{
+    auto state = processorRef.getMuseState();
+    juce::Colour colour;
+    juce::String label;
+
+    switch (state)
     {
-        juce::Font footerFont(juce::FontOptions().withHeight(10.0f));
-
-        // Get current Muse state from processor
-        auto state = processorRef.getMuseState();
-        juce::String statusMsg;
-
-        switch (state)
-        {
-            case PluginProcessor::MuseState::Flow:
-                statusMsg = "FLOW";
-                break;
-            case PluginProcessor::MuseState::Struggle:
-                statusMsg = "STRUGGLE";
-                break;
-            case PluginProcessor::MuseState::Meltdown:
-                statusMsg = "MELTDOWN";
-                break;
-        }
-
-        drawOLEDGlowText(g, statusMsg, {0, 550, 400, 20}, 0.7f,
-                         juce::Justification::centred, footerFont);
+        case PluginProcessor::MuseState::Flow:
+            colour = juce::Colour::fromRGB(66, 214, 151);
+            label = "FLOW";
+            break;
+        case PluginProcessor::MuseState::Struggle:
+            colour = juce::Colour::fromRGB(232, 191, 61);
+            label = "STRUGGLE";
+            break;
+        case PluginProcessor::MuseState::Meltdown:
+        default:
+            colour = juce::Colour::fromRGB(219, 63, 63);
+            label = "MELTDOWN";
+            break;
     }
 
-    // ===== OLED overlay: synesthetic utterance (optional) =====
-    auto utter = processorRef.getLatestUtterance();
-    if (utter.isNotEmpty())
+    juce::Rectangle<float> ledBounds(24.0f, 20.0f, 12.0f, 12.0f);
+    g.setColour(colour.withAlpha(0.25f));
+    g.fillEllipse(ledBounds.expanded(4.0f));
+    g.setColour(colour);
+    g.fillEllipse(ledBounds);
+
+    juce::Font statusFont(juce::FontOptions().withHeight(11.0f).withStyle("Bold"));
+    g.setFont(statusFont);
+    g.setColour(juce::Colour(LED_MINT).withAlpha(0.85f));
+    g.drawText(label, juce::Rectangle<int>(44, 14, 120, 24), juce::Justification::left);
+
+    if (processorRef.isDangerModeEnabled())
     {
-        juce::Font overlayFont(juce::FontOptions().withHeight(12.0f));
-        overlayFont.setBold(true);
-        drawOLEDGlowText(g, utter, displayPanel.toNearestInt().withY((int)displayPanel.getY() + 8).reduced(8),
-                         0.9f, juce::Justification::centredTop, overlayFont);
+        auto warningArea = juce::Rectangle<int>(260, 24, 120, 16);
+        g.setColour(juce::Colours::red.withAlpha(0.6f));
+        g.setFont(juce::Font(10.0f, juce::Font::bold));
+        g.drawText("DANGER ACTIVE", warningArea, juce::Justification::left);
     }
 }
 
@@ -289,100 +357,100 @@ void PluginEditor::drawPowderCoatTexture(juce::Graphics& g, juce::Rectangle<floa
 }
 
 void PluginEditor::drawKnob(juce::Graphics& g, juce::Rectangle<float> bounds,
-                            float value, const juce::String& label)
+                            float value, const juce::String& label, int knobId)
 {
+    // PHASE 2: Mechanical wobble (deterministic per knob)
+    juce::Random wobbleRandom(knobId + 1993);  // Seed with knob ID + EMU year
+    float wobbleX = (wobbleRandom.nextFloat() - 0.5f) * 0.4f;
+    float wobbleY = (wobbleRandom.nextFloat() - 0.5f) * 0.4f;
+    bounds = bounds.translated(wobbleX, wobbleY);
+
     auto center = bounds.getCentre();
     float radius = bounds.getWidth() * 0.5f;
 
-    // ===== KNOB OUTER SHADOW =====
-    g.setColour(juce::Colour(0x80000000));
+    // Drop shadow (subtle depth)
+    g.setColour(juce::Colours::black.withAlpha(0.5f));
     g.fillEllipse(bounds.translated(1, 1));
 
-    // ===== KNOB BODY - 3D GRADIENT (from code.html: linear-gradient(145deg, #325555, #2c4949)) =====
+    // ===== OUTER BEZEL (100% size) - Gradient + inset shadows =====
+    // CSS: linear-gradient(145deg, #325555, #2c4949)
+    // CSS: box-shadow: inset 2px 2px 4px #263e3e, inset -2px -2px 4px #385f5f
     juce::ColourGradient gradient(
-        juce::Colour(0xFF325555), center.x - radius * 0.7f, center.y - radius * 0.7f,
-        juce::Colour(0xFF2c4949), center.x + radius * 0.7f, center.y + radius * 0.7f,
+        juce::Colour(KNOB_GRAD_LIGHT), center.x - radius * 0.6f, center.y - radius * 0.6f,
+        juce::Colour(KNOB_GRAD_DARK), center.x + radius * 0.6f, center.y + radius * 0.6f,
         false
     );
     g.setGradientFill(gradient);
     g.fillEllipse(bounds);
 
-    // ===== INSET SHADOWS (from code.html: inset 2px 2px 4px #263e3e, inset -2px -2px 4px #385f5f) =====
-    // Simulate inset shadows with layered gradients
-    // Dark inset (top-left) - creates shadow effect
-    {
-        juce::ColourGradient darkInset(
-            juce::Colour(0xFF263e3e).withAlpha(0.6f), center.x - radius * 0.3f, center.y - radius * 0.3f,
-            juce::Colours::transparentBlack, center.x + radius * 0.3f, center.y + radius * 0.3f,
-            true  // Radial gradient
-        );
-        g.setGradientFill(darkInset);
-        g.fillEllipse(bounds.reduced(2));
-    }
+    // Inset shadow (top-left darker, bottom-right lighter)
+    g.setColour(juce::Colour(KNOB_INSET_DARK).withAlpha(0.4f));
+    g.fillEllipse(bounds.getX() + 2, bounds.getY() + 2, bounds.getWidth() - 2, bounds.getHeight() - 2);
 
-    // Light inset (bottom-right) - creates highlight effect
-    {
-        juce::ColourGradient lightInset(
-            juce::Colours::transparentBlack, center.x - radius * 0.3f, center.y - radius * 0.3f,
-            juce::Colour(0xFF385f5f).withAlpha(0.5f), center.x + radius * 0.3f, center.y + radius * 0.3f,
-            true  // Radial gradient
-        );
-        g.setGradientFill(lightInset);
-        g.fillEllipse(bounds.reduced(2));
-    }
+    g.setColour(juce::Colour(KNOB_INSET_LIGHT).withAlpha(0.3f));
+    g.fillEllipse(bounds.getX(), bounds.getY(), bounds.getWidth() - 2, bounds.getHeight() - 2);
 
-    // ===== CENTER CIRCLE (moss green) =====
-    float centerRadius = radius * 0.88f;  // Increased from 0.8f for thinner rim
-    juce::Rectangle<float> centerBounds(
-        center.x - centerRadius, center.y - centerRadius,
-        centerRadius * 2, centerRadius * 2
-    );
+    // ===== CENTER CIRCLE (80% size) - Flat chassis color =====
+    // CSS: width: 80%; background: #2F4F4F;
+    auto centerCircle = bounds.reduced(radius * 0.2f);
     g.setColour(juce::Colour(CHASSIS_MOSS));
-    g.fillEllipse(centerBounds);
+    g.fillEllipse(centerCircle);
 
-    // ===== INDICATOR DOT ON RIM (from code.html) =====
+    // PHASE 2: Knob wear patterns (scratches + finger darkening)
+    juce::Random wearRandom(knobId + 42);  // Deterministic wear per knob
+    for (int i = 0; i < 6; ++i)
+    {
+        float angle = wearRandom.nextFloat() * juce::MathConstants<float>::twoPi;
+        float startR = wearRandom.nextFloat() * radius * 0.3f;
+        float length = 8.0f + wearRandom.nextFloat() * 12.0f;
+        juce::Point<float> p1(center.x + std::cos(angle) * startR,
+                              center.y + std::sin(angle) * startR);
+        juce::Point<float> p2(p1.x + std::cos(angle) * length,
+                              p1.y + std::sin(angle) * length);
+        g.setColour(juce::Colours::black.withAlpha(0.12f));
+        g.drawLine(p1.x, p1.y, p2.x, p2.y, 0.6f);
+    }
+
+    // Finger wear darkening (center hotspot)
+    g.setColour(juce::Colours::black.withAlpha(0.06f));
+    g.fillEllipse(centerCircle.reduced(radius * 0.15f));
+
+    // ===== MINT INDICATOR LINE (2px × 12px) =====
+    // CSS: width: 2px; height: 12px; top: 6px; background: #d8f3dc;
     float angle = juce::MathConstants<float>::pi * 1.25f +
                   value * juce::MathConstants<float>::pi * 1.5f;
 
-    float dotDistance = radius - 6.0f;
-    juce::Point<float> dotPos(
-        center.x + std::cos(angle) * dotDistance,
-        center.y + std::sin(angle) * dotDistance
+    float lineLength = 12.0f;
+    float lineStartRadius = 6.0f;
+    juce::Point<float> lineStart(
+        center.x + std::cos(angle - juce::MathConstants<float>::halfPi) * lineStartRadius,
+        center.y + std::sin(angle - juce::MathConstants<float>::halfPi) * lineStartRadius
     );
-
-    // Dot with glow
-    g.setColour(juce::Colour(LED_MINT).withAlpha(0.4f));
-    g.fillEllipse(dotPos.x - 3.0f, dotPos.y - 3.0f, 6, 6);
-    g.setColour(juce::Colour(LED_MINT));
-    g.fillEllipse(dotPos.x - 2.0f, dotPos.y - 2.0f, 4, 4);
-
-    // ===== CENTER LINE INDICATOR =====
-    float lineLength = centerRadius - 6.0f;
-    juce::Point<float> lineStart(center.x, center.y);
     juce::Point<float> lineEnd(
-        center.x + std::cos(angle) * lineLength,
-        center.y + std::sin(angle) * lineLength
+        center.x + std::cos(angle - juce::MathConstants<float>::halfPi) * (lineStartRadius + lineLength),
+        center.y + std::sin(angle - juce::MathConstants<float>::halfPi) * (lineStartRadius + lineLength)
     );
 
-    g.setColour(juce::Colour(LED_MINT).withAlpha(0.4f));
+    // Mint glow on indicator
+    auto mint = juce::Colour(LED_MINT);
+    g.setColour(mint.withAlpha(0.3f));
     g.drawLine(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y, 3.0f);
-    g.setColour(juce::Colour(LED_MINT));
+    g.setColour(mint);
     g.drawLine(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y, 2.0f);
 
-    // ===== LABEL (OLED GLOW) =====
+    // ===== LABEL (Sans-serif semibold, 14px, tracking-widest) =====
     {
-        juce::Font labelFont(juce::FontOptions().withHeight(11.0f));
-        labelFont.setBold(true);
+        juce::Font labelFont(juce::FontOptions().withHeight(14.0f).withStyle("Bold"));
+        labelFont.setExtraKerningFactor(0.2f); // tracking-widest = ~0.1em = 20%
         drawOLEDGlowText(g, label,
                          juce::Rectangle<int>((int)(bounds.getX() - 30), (int)(bounds.getY() - 27),
                                               (int)(bounds.getWidth() + 60), 20),
                          1.0f, juce::Justification::centred, labelFont);
     }
 
-    // ===== VALUE READOUT =====
+    // ===== VALUE READOUT (Monospace 12px = text-xs) =====
     {
-        juce::Font valueFont(juce::FontOptions().withHeight(10.0f));
-        valueFont.setTypefaceName("Consolas"); // Monospace if available
+        juce::Font valueFont(juce::FontOptions(juce::Font::getDefaultMonospacedFontName(), 12.0f, juce::Font::plain));
         auto valueArea = juce::Rectangle<int>((int)(bounds.getX() - 20), (int)(bounds.getBottom() + 6),
                                               (int)(bounds.getWidth() + 40), 16);
         drawOLEDGlowText(g, juce::String(value, 1), valueArea, 1.0f,
@@ -405,6 +473,7 @@ void PluginEditor::resized()
 
     // Auto button (below display, centered)
     autoButton.setBounds(164, 220, 72, 22);
+    dangerButton.setBounds(260, 220, 90, 22);
 
     // Pair badge (below AUTO button, shows active pair)
     pairBadgeLabel.setBounds(164, 245, 72, 14);
@@ -417,22 +486,70 @@ void PluginEditor::resized()
 
 void PluginEditor::timerCallback()
 {
+    // 60 FPS for smooth knob repaints
+    repaint();
+
+    // Throttle mouth updates to 10 FPS (sacred haunted stutter)
+    if (++frameCounter_ % 6 != 0)
+        return;
+
     // Update HalftoneMouth with continuous DSP state (no discrete quantization)
     float audioLevel = processorRef.getAudioLevel();
-    float morphValue = *processorRef.getState().getRawParameterValue("morph");
-    int pairIndex = static_cast<int>(*processorRef.getState().getRawParameterValue("pair"));
+
+    // CRITICAL: Null-safe parameter reads (prevents crash if timer fires before APVTS init)
+    auto* morphPtr = processorRef.getState().getRawParameterValue("morph");
+    auto* intensityPtr = processorRef.getState().getRawParameterValue("intensity");
+    auto* pairPtr = processorRef.getState().getRawParameterValue("pair");
+
+    float morphValue = morphPtr ? morphPtr->load() : 0.5f;
+    float intensityValue = intensityPtr ? intensityPtr->load() : 0.5f;
+    int pairIndex = pairPtr ? static_cast<int>(pairPtr->load()) : 0;
+
+    // Phase 1: Direct pole visualization - get actual Z-plane pole positions
+    auto poles = processorRef.getLastPoles();
+    if (!poles.empty())
+    {
+        auto dotPattern = convertPolesToDots(poles);
+        halftoneMouth.setDotPattern(dotPattern);
+    }
 
     halftoneMouth.setAudioLevel(audioLevel);
     halftoneMouth.setMorph(morphValue);
+    halftoneMouth.setIntensity(intensityValue);
     halftoneMouth.setPair(pairIndex);
-    // Note: morph + pair drive continuous vowel template blending inside HalftoneMouth
 
-    // Update pair badge label
-    const char* pairNames[] = { "[VOWEL]", "[BELL]", "[LOW]", "[SUB]" };
-    if (pairIndex >= 0 && pairIndex < 4)
-        pairBadgeLabel.setText(pairNames[pairIndex], juce::dontSendNotification);
+    // PHASE 2: Occasional glitch timing (~30 seconds, randomized)
+    if (++glitchTimerFrames_ >= nextGlitchFrame_)
+    {
+        halftoneMouth.triggerGlitchFrame();
+        glitchTimerFrames_ = 0;
+        // Next glitch in 20-40 seconds @ 60 FPS = 1200-2400 frames
+        nextGlitchFrame_ = 1200 + juce::Random::getSystemRandom().nextInt(1200);
+    }
 
-    repaint();
+    // PHASE 3: AUTO mode visual feedback (show detected pair)
+    auto* autoPtr = processorRef.getState().getRawParameterValue("auto");
+    bool autoMode = autoPtr ? (autoPtr->load() > 0.5f) : false;
+    if (autoMode)
+    {
+        int suggestedPair = processorRef.getSuggestedPairIndex();
+        juce::String pairName;
+        switch (suggestedPair)
+        {
+            case 0: pairName = "VOWEL"; break;
+            case 1: pairName = "BELL"; break;
+            case 2: pairName = "LOW"; break;
+            case 3: pairName = "SUB"; break;
+            default: pairName = "---"; break;
+        }
+        pairBadgeLabel.setText(pairName, juce::dontSendNotification);
+    }
+    else
+    {
+        pairBadgeLabel.setText("MANUAL", juce::dontSendNotification);
+    }
+
+    halftoneMouth.triggerUpdate();  // Explicit update trigger for 10 FPS cadence
 }
 
 void PluginEditor::showSavePresetDialog()
@@ -477,4 +594,35 @@ void PluginEditor::refreshPresetList()
     {
         presetComboBox.addItem(presets[i], i + 1);
     }
+}
+
+// Phase 1: Convert Z-plane poles to 16×6 dot grid via radial influence
+std::array<float, 96> PluginEditor::convertPolesToDots(const std::vector<MuseZPlaneEngine::PoleData>& poles)
+{
+    std::array<float, 96> dots{};
+
+    // For each dot in 16×6 grid
+    for (int y = 0; y < 6; ++y) {
+        for (int x = 0; x < 16; ++x) {
+            float dotX = (x + 0.5f) / 16.0f;
+            float dotY = (y + 0.5f) / 6.0f;
+
+            // Sum influence from all poles
+            float intensity = 0.0f;
+            for (const auto& pole : poles) {
+                // Convert polar to cartesian (Z-plane: -1 to 1 → screen: 0 to 1)
+                float poleX = (pole.r * std::cos(pole.theta) + 1.0f) * 0.5f;
+                float poleY = (pole.r * std::sin(pole.theta) + 1.0f) * 0.5f;
+
+                // Radial falloff from each pole (exponential decay)
+                float dx = dotX - poleX;
+                float dy = dotY - poleY;
+                float dist = std::sqrt(dx * dx + dy * dy);
+                intensity += pole.r * std::exp(-dist * 5.0f);
+            }
+
+            dots[y * 16 + x] = juce::jmin(1.0f, intensity);
+        }
+    }
+    return dots;
 }
