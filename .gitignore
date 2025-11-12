@@ -64,3 +64,14 @@ build/
 .vs/
 node_modules/
 build-vs2022/
+
+# Windows temp files
+nul
+*.tmp
+
+# VS Code
+.vscode/
+
+# JetBrains
+*.iml
+.idea/
