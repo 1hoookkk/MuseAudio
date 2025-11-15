@@ -2,6 +2,7 @@
 
 #include <array>
 #include <atomic>
+#include <vector>
 #include <juce_graphics/juce_graphics.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../dsp/AuthenticShapeLoader.h"
@@ -36,6 +37,7 @@ public:
         initialiseShapeTemplates();
         setJitter(true);  // Enable subtle hardware LED flicker
         // No internal timer - PluginEditor drives 10 FPS updates via triggerUpdate()
+        dotStates_.resize(kTotal);
     }
 
     ~HalftoneMouth() override = default;
@@ -57,12 +59,37 @@ public:
     // Phase 1: Direct pole visualization - bypass vowel templates
     void setDotPattern(const std::array<float, 96>& pattern)
     {
+        setDotPattern(std::vector<float>(pattern.begin(), pattern.end()), kCols, kRows);
+    }
+
+    void setDotPattern(const std::vector<float>& pattern, int cols, int rows)
+    {
+        if (pattern.empty() || cols <= 0 || rows <= 0)
+        {
+            clearDotPattern();
+            return;
+        }
+
+        directPatternCols_ = cols;
+        directPatternRows_ = rows;
         directDotPattern_ = pattern;
+        ensureDotStateSize(cols * rows);
         useDirectPattern_.store(true, std::memory_order_relaxed);
+    }
+
+    void setDotMaskImage(const juce::Image& mask, int cols, int rows)
+    {
+        auto dots = convertMaskToDots(mask, cols, rows);
+        if (!dots.empty())
+            setDotPattern(dots, cols, rows);
     }
 
     void clearDotPattern()
     {
+        directPatternCols_ = kCols;
+        directPatternRows_ = kRows;
+        directDotPattern_.clear();
+        ensureDotStateSize(kTotal);
         useDirectPattern_.store(false, std::memory_order_relaxed);
     }
 
@@ -85,9 +112,6 @@ private:
     void renderCPU (juce::Graphics& g)
     {
         auto bounds = getLocalBounds().toFloat();
-        const int cols = kCols;
-        const int rows = kRows;
-
         // Animation / state snapshots
         float audio = audioLevel_.load (std::memory_order_relaxed);
         float morphPos = morph_.load (std::memory_order_relaxed);
@@ -101,16 +125,14 @@ private:
         // LOW (2): AA → OO (2-stage, wide → narrow)
         // SUB (3): AH (static, sub-bass has no formants)
 
-        // Background (lime green for LipHalftone, black for LED grid)
+        // Background (light LCD for LipHalftone, black for LED grid)
         const bool useLip = static_cast<Style>(style_.load(std::memory_order_relaxed)) == Style::LipHalftone;
-        g.setColour(useLip ? juce::Colour(0xFF9FFF9F) : juce::Colours::black);
+        g.setColour(useLip ? juce::Colour(0xFFF1F4F5)   // match panel behind
+                           : juce::Colours::black);
         g.fillRect (bounds);
 
-        // Layout constants
         const float gridW = bounds.getWidth();
         const float gridH = bounds.getHeight();
-        const float cellW = gridW / (float) cols;
-        const float cellH = gridH / (float) rows;
 
         // Breathing + transient pulses
         float breathScale = 1.0f + std::sin (breathPhase_) * 0.02f;
@@ -161,7 +183,24 @@ private:
         if (!useLip)
         {
             // Phase 1: Check if using direct pole visualization
-            bool useDirect = useDirectPattern_.load(std::memory_order_relaxed);
+            const bool useDirect = useDirectPattern_.load(std::memory_order_relaxed)
+                                   && directPatternCols_ > 0 && directPatternRows_ > 0
+                                   && static_cast<int>(directDotPattern_.size()) == directPatternCols_ * directPatternRows_;
+
+            const int cols = useDirect ? directPatternCols_ : kCols;
+            const int rows = useDirect ? directPatternRows_ : kRows;
+            ensureDotStateSize(cols * rows);
+
+            const float gridW = bounds.getWidth();
+            const float gridH = bounds.getHeight();
+            const float cellW = gridW / (float) cols;
+            const float cellH = gridH / (float) rows;
+
+            const auto& aaTemplate = shapes_[static_cast<int> (Vowel::AA)];
+            const auto& ahTemplate = shapes_[static_cast<int> (Vowel::AH)];
+            const auto& eeTemplate = shapes_[static_cast<int> (Vowel::EE)];
+            const auto& ohTemplate = shapes_[static_cast<int> (Vowel::OH)];
+            const auto& ooTemplate = shapes_[static_cast<int> (Vowel::OO)];
 
             for (int r = 0; r < rows; ++r)
             {
@@ -170,15 +209,26 @@ private:
                     int idx = r * cols + c;
 
                     // Phase 1: Use direct pole pattern OR fallback to vowel templates
-                    float blendedRadius = useDirect
-                        ? directDotPattern_[idx]
-                        : (aaWeight * aaTemplate[idx]
-                           + ahWeight * ahTemplate[idx]
-                           + eeWeight * eeTemplate[idx]
-                           + ohWeight * ohTemplate[idx]
-                           + ooWeight * ooTemplate[idx]);
+                    float blendedRadius = 0.0f;
+                    if (useDirect && idx < (int) directDotPattern_.size())
+                    {
+                        blendedRadius = directDotPattern_[idx];
+                    }
+                    else
+                    {
+                        blendedRadius = (aaWeight * aaTemplate[idx]
+                                         + ahWeight * ahTemplate[idx]
+                                         + eeWeight * eeTemplate[idx]
+                                         + ohWeight * ohTemplate[idx]
+                                         + ooWeight * ooTemplate[idx]);
+                    }
 
                     float finalRadius = blendedRadius;
+
+                    // Gate pattern to show flat line when silent (smooth fade-in above 5%)
+                    float audioGate = audio < 0.05f ? 0.0f : (audio - 0.05f) / 0.95f;
+                    finalRadius *= audioGate;
+
                     float brightness = 0.3f + audio * 0.7f; // 0.3 .. 1.0
 
                     // PHASE 2: Phosphor decay (CRT persistence - slow fade after peak)
@@ -191,7 +241,7 @@ private:
                     else
                         dotState.phosphor *= 0.92f;  // Decay per frame (10 FPS)
 
-                    if (microExpressionFrames_ > 0)
+                    if (!useDirect && microExpressionFrames_ > 0)
                     {
                         switch (microExpressionType_)
                         {
@@ -212,9 +262,9 @@ private:
                         finalRadius *= 0.95f + juce::Random::getSystemRandom().nextFloat() * 0.10f;
                     }
 
-                    float maxDot = juce::jmin (cellW, cellH) * 0.45f * globalScale; // Small LED pixels with visible gaps
+                    float maxDot = juce::jmin (cellW, cellH) * (useDirect ? 0.6f : 0.45f) * globalScale;
                     float diameter = maxDot * finalRadius;
-                    if (diameter < 0.8f) continue;
+                    if (diameter < 0.2f) continue;  // Lowered from 0.8 to allow more visible dots
 
                     float cx = bounds.getX() + c * cellW + cellW * 0.5f;
                     float cy = bounds.getY() + r * cellH + cellH * 0.5f;
@@ -267,91 +317,62 @@ private:
             const float intensity = juce::jlimit(0.0f, 1.0f, intensity_.load(std::memory_order_relaxed));
             const float heightGain = juce::jmap(intensity, 0.0f, 1.0f, 0.85f, 1.15f);
 
-            // Clamp proportions for stable almond look
-            const float rx = (gridW * 0.48f) * juce::jlimit(0.80f, 1.05f, widthRatio);
-            const float ry = (gridH * 0.33f) * juce::jlimit(0.90f, 1.15f, heightRatio * heightGain);
+            // Clamp proportions for stable almond look (don't let morph/intensity flatten it)
+            const float rx = (gridW * 0.48f) * juce::jlimit(0.90f, 1.05f, widthRatio);
+            const float ry = (gridH * 0.33f) * juce::jlimit(0.95f, 1.15f, heightRatio * heightGain);
             const float cx0 = bounds.getCentreX();
             const float cy0 = bounds.getCentreY();
 
             const float brightnessBase = 0.32f + audio * 0.68f;
 
-            // DOUBLE-PASS PHOSPHOR BLOOM (sacred haunted aesthetic)
-            for (int pass = 0; pass < 2; ++pass)
+            // SINGLE-PASS SHARP DOTS (print-like, not OLED glow)
+            for (int r = 0; r < lipRows; ++r)
             {
-                bool isGlowPass = (pass == 0);
-
-                for (int r = 0; r < lipRows; ++r)
+                for (int c = 0; c < lipCols; ++c)
                 {
-                    for (int c = 0; c < lipCols; ++c)
+                    const float px = bounds.getX() + c * lipCellW + lipCellW * 0.5f;
+                    const float py = bounds.getY() + r * lipCellH + lipCellH * 0.5f;
+
+                    const float nx = (px - cx0) / rx;
+                    const float ny = (py - cy0) / ry;
+
+                    // Superellipse test (almond shape, n=2.6 adds subtle corner point)
+                    const float nExp = 2.6f;
+                    const float f = superellipseF(nx, ny, 1.0f, 1.0f, nExp);
+                    if (f > 1.0f) continue;
+
+                    // Edge-weighted: bigger dots near rim, smaller in center
+                    const float edge = smoothstep(0.70f, 1.00f, f);  // 0 at center, 1 at edge
+                    float dotScale = 1.0f - std::pow(edge, 0.55f);    // Strong edge emphasis
+
+                    // Vertical taper (thinner at top/bottom)
+                    const float lipProfile = 1.0f - juce::jlimit(0.0f, 1.0f, std::abs(ny) * 0.75f);
+                    dotScale *= 0.85f + 0.15f * lipProfile;
+
+                    // Horizontal end pinch (sharper corners like almond)
+                    const float pinch = 1.0f - smoothstep(0.82f, 1.0f, std::abs(nx));
+                    dotScale *= 0.85f + 0.15f * pinch;
+
+                    if (microExpressionFrames_ > 0)
                     {
-                        const float px = bounds.getX() + c * lipCellW + lipCellW * 0.5f;
-                        const float py = bounds.getY() + r * lipCellH + lipCellH * 0.5f;
-
-                        const float nx = (px - cx0) / rx;
-                        const float ny = (py - cy0) / ry;
-
-                        // Superellipse test (almond shape, n=2.6 adds subtle corner point)
-                        const float nExp = 2.6f;
-                        const float f = superellipseF(nx, ny, 1.0f, 1.0f, nExp);
-                        if (f > 1.0f) continue;
-
-                        // Edge-weighted: bigger dots near rim, smaller in center
-                        const float edge = smoothstep(0.70f, 1.00f, f);  // 0 at center, 1 at edge
-                        float dotScale = 1.0f - std::pow(edge, 0.55f);    // Strong edge emphasis
-
-                        // Vertical taper (thinner at top/bottom)
-                        const float lipProfile = 1.0f - juce::jlimit(0.0f, 1.0f, std::abs(ny) * 0.75f);
-                        dotScale *= 0.85f + 0.15f * lipProfile;
-
-                        // Horizontal end pinch (sharper corners like almond)
-                        const float pinch = 1.0f - smoothstep(0.82f, 1.0f, std::abs(nx));
-                        dotScale *= 0.85f + 0.15f * pinch;
-
-                        if (microExpressionFrames_ > 0)
-                        {
-                            if (microExpressionType_ == 0)
-                                dotScale *= (std::abs(ny) < 0.2f ? 0.6f : 1.0f); // blink
-                            else if (microExpressionType_ == 1)
-                                dotScale *= 1.03f; // sigh = slightly larger
-                            else if (microExpressionType_ == 2 && c > lipCols / 2)
-                                dotScale *= 1.05f; // asymmetry
-                        }
-
-                        if (isGlowPass)
-                        {
-                            // Pass 0: Phosphor bloom (larger, dimmer)
-                            float glowSize = juce::jmin(lipCellW, lipCellH) * 1.3f * globalScale * dotScale;
-                            if (glowSize < 0.6f) continue;
-
-                            float glowAlpha = brightnessBase * 0.18f * (1.0f - edge);  // Brighter toward center
-                            g.setColour(tint_.withMultipliedAlpha(glowAlpha));
-                            g.fillEllipse(px - glowSize * 0.5f, py - glowSize * 0.5f, glowSize, glowSize);
-                        }
-                        else
-                        {
-                            // Pass 1: Sharp dots with controlled flicker
-                            if (jitter)
-                                dotScale *= 0.97f + juce::Random::getSystemRandom().nextFloat() * 0.06f;
-
-                            // Occasional flicker (broken hardware aesthetic)
-                            float flicker = 1.0f;
-                            if (frameCounter_ % 37 == 0 && juce::Random::getSystemRandom().nextFloat() < 0.02f)
-                                flicker = 0.4f;
-
-                            // Tighter, smaller dots for dense look
-                            float maxDot = juce::jmin(lipCellW, lipCellH) * 0.85f * globalScale;
-                            float diameter = juce::jmax(0.0f, maxDot * dotScale);
-                            if (diameter < 0.35f)
-                                continue;
-
-                            // Edge-based brightness (brighter toward center) + dim upper lip
-                            float brightness = brightnessBase * (0.90f + 0.10f * (1.0f - edge)) * flicker;
-                            if (ny < 0.0f) brightness *= 0.9f;  // Dim upper lip slightly
-                            juce::Colour dotColour = tint_.withMultipliedAlpha(brightness);
-                            g.setColour(dotColour);
-                            g.fillEllipse(px - diameter * 0.5f, py - diameter * 0.5f, diameter, diameter);
-                        }
+                        if (microExpressionType_ == 0)
+                            dotScale *= (std::abs(ny) < 0.2f ? 0.6f : 1.0f); // blink
+                        else if (microExpressionType_ == 1)
+                            dotScale *= 1.03f; // sigh = slightly larger
+                        else if (microExpressionType_ == 2 && c > lipCols / 2)
+                            dotScale *= 1.05f; // asymmetry
                     }
+
+                    // Tighter, smaller dots for dense look
+                    float maxDot = juce::jmin(lipCellW, lipCellH) * 0.85f * globalScale;
+                    float diameter = juce::jmax(0.0f, maxDot * dotScale);
+                    if (diameter < 0.35f)
+                        continue;
+
+                    // Dark "ink" dot on light panel; lightly edge-weighted
+                    float brightness = 0.75f * (0.85f + 0.15f * (1.0f - edge)); // slightly lighter at center
+                    g.setColour(tint_.withMultipliedAlpha(brightness));
+                    g.fillEllipse(px - diameter * 0.5f, py - diameter * 0.5f, diameter, diameter);
                 }
             }
         }
@@ -476,13 +497,79 @@ private:
     int frameCounter_ = 0;        // For controlled flicker timing (frame % 37)
 
     // PHASE 2: Per-dot phosphor decay state (16×6 = 96 dots)
-    std::array<DotState, kTotal> dotStates_ {};
+    std::vector<DotState> dotStates_;
 
     // Visual style
     juce::Colour tint_ { juce::Colours::white };
 
     // Phase 1: Direct pole visualization pattern (UI thread only)
-    std::array<float, 96> directDotPattern_ {};
+    std::vector<float> directDotPattern_;
+    int directPatternCols_ = kCols;
+    int directPatternRows_ = kRows;
+
+    std::vector<float> convertMaskToDots(const juce::Image& mask, int cols, int rows, int supersample = 3, float gamma = 0.85f) const
+    {
+        if (!mask.isValid() || cols <= 0 || rows <= 0)
+            return {};
+
+        std::vector<float> dots(cols * rows, 0.0f);
+        const int samples = juce::jlimit(1, 4, supersample);
+        const float invSamples = 1.0f / (float) (samples * samples);
+        const int width = mask.getWidth();
+        const int height = mask.getHeight();
+
+        static constexpr float bayer4x4[4][4] =
+        {
+            { 0.0f / 16.0f, 12.0f / 16.0f, 3.0f / 16.0f, 15.0f / 16.0f },
+            { 8.0f / 16.0f, 4.0f / 16.0f, 11.0f / 16.0f, 7.0f / 16.0f },
+            { 2.0f / 16.0f, 14.0f / 16.0f, 1.0f / 16.0f, 13.0f / 16.0f },
+            { 10.0f / 16.0f, 6.0f / 16.0f, 9.0f / 16.0f, 5.0f / 16.0f },
+        };
+
+        auto sampleAlpha = [&](float normX, float normY)
+        {
+            float x = juce::jlimit(0.0f, 0.999f, normX) * (width - 1);
+            float y = juce::jlimit(0.0f, 0.999f, normY) * (height - 1);
+            return mask.getPixelAt((int) std::round(x), (int) std::round(y)).getFloatAlpha();
+        };
+
+        for (int r = 0; r < rows; ++r)
+        {
+            for (int c = 0; c < cols; ++c)
+            {
+                float coverage = 0.0f;
+                for (int sy = 0; sy < samples; ++sy)
+                {
+                    for (int sx = 0; sx < samples; ++sx)
+                    {
+                        float nx = ((float) c + (sx + 0.5f) / samples) / (float) cols;
+                        float ny = ((float) r + (sy + 0.5f) / samples) / (float) rows;
+                        coverage += sampleAlpha(nx, ny);
+                    }
+                }
+                coverage *= invSamples;
+
+                if (coverage > 0.001f)
+                    coverage = std::pow(juce::jlimit(0.0f, 1.0f, coverage), gamma);
+
+                if (coverage > 0.2f && coverage < 0.8f)
+                {
+                    float dither = bayer4x4[r & 3][c & 3] - 0.5f;
+                    coverage = juce::jlimit(0.0f, 1.0f, coverage + dither * 0.2f);
+                }
+
+                dots[r * cols + c] = coverage;
+            }
+        }
+
+        return dots;
+    }
+
+    void ensureDotStateSize(int totalDots)
+    {
+        if ((int) dotStates_.size() != totalDots)
+            dotStates_.assign(totalDots, {});
+    }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HalftoneMouth)
 };

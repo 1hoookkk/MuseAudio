@@ -431,6 +431,7 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         // Store in atomic for UI thread (lock-free, 0-1 range)
         // Scale to reasonable range: typical RMS is 0.0-0.5, map to 0-1 for visualization
         float normalizedLevel = juce::jlimit(0.0f, 1.0f, smoothedLevel_ * 2.0f);
+        normalizedLevel = std::pow(normalizedLevel, 0.7f);  // Lift low levels for better visibility
         audioLevel_.store(normalizedLevel, std::memory_order_relaxed);
     }
 

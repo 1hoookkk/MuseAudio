@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <array>
 #include <cmath>
 
@@ -131,7 +132,8 @@ public:
             {{0.876f, 0.267f, 0.882f, 0.534f, 0.869f, 0.801f, 0.856f, 1.068f, 0.843f, 1.335f, 0.830f, 1.602f}},
             {{0.941f, 0.156f, 0.937f, 0.312f, 0.933f, 0.468f, 0.929f, 0.624f, 0.925f, 0.780f, 0.921f, 0.936f}},
             {{0.963f, 0.195f, 0.957f, 0.390f, 0.951f, 0.585f, 0.945f, 0.780f, 0.939f, 0.975f, 0.933f, 1.170f}},
-            {{0.912f, 0.334f, 0.668f, 0.900f, 1.002f, 0.894f, 1.336f, 0.888f, 1.670f, 0.882f, 2.004f, 0.0f}},
+            // FIXED: Original had invalid radii > 1.0 (1.002, 1.336, 1.670, 2.004) - clamped to 0.995
+            {{0.912f, 0.334f, 0.668f, 0.900f, 0.995f, 0.894f, 0.995f, 0.888f, 0.995f, 0.882f, 0.995f, 0.876f}},
             {{0.947f, 0.267f, 0.941f, 0.534f, 0.935f, 0.801f, 0.929f, 1.068f, 0.923f, 1.335f, 0.917f, 1.602f}},
             {{0.867f, 0.356f, 0.873f, 0.712f, 0.860f, 1.068f, 0.847f, 1.424f, 0.834f, 1.780f, 0.821f, 2.136f}},
             {{0.958f, 0.089f, 0.952f, 0.178f, 0.946f, 0.267f, 0.940f, 0.356f, 0.934f, 0.445f, 0.928f, 0.534f}},
@@ -152,7 +154,9 @@ public:
             {{0.967f, 0.178f, 0.961f, 0.356f, 0.955f, 0.534f, 0.949f, 0.712f, 0.943f, 0.890f, 0.937f, 1.068f}}
         }};
 
-        return AUTHENTIC_EMU_SHAPES[shapeIndex];
+        // CRITICAL: Clamp index to prevent out-of-bounds access (malformed preset/automation)
+        const int safeIndex = std::clamp(shapeIndex, 0, static_cast<int>(AUTHENTIC_EMU_SHAPES.size()) - 1);
+        return AUTHENTIC_EMU_SHAPES[safeIndex];
     }
 
     // Map Muse vowel enums to authentic EMU shape indices

@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "BinaryData.h"
 #include <cmath>
 
 // Active Visual Skin: Industrial Instrument (shipping)
@@ -9,12 +10,21 @@ PluginEditor::PluginEditor(PluginProcessor& p)
     : AudioProcessorEditor(&p),
       processorRef(p)
 {
-    // Add HalftoneMouth visualizer (shows actual DSP vowel shapes)
-    // Steel grey tint for dark dots on lime LCD (retro hardware look)
+    // Add HalftoneMouth visualizer (procedural dot matrix)
     halftoneMouth.setTintColor(juce::Colour(0xFF3B4A52));
-    // Dense almond lip with superellipse SDF (thousands of dots)
-    halftoneMouth.setStyle(HalftoneMouth::Style::LipHalftone);
     addAndMakeVisible(halftoneMouth);
+
+    constexpr bool kUseCameoMask = true;
+    if (kUseCameoMask)
+    {
+        halftoneMouth.setStyle(HalftoneMouth::Style::LEDGrid);
+        auto cameoMask = createCameoMaskImage(256, 256);
+        halftoneMouth.setDotMaskImage(cameoMask, 140, 58);
+    }
+    else
+    {
+        halftoneMouth.setStyle(HalftoneMouth::Style::LipHalftone);
+    }
 
     // PHASE 1.2: Melatonin Inspector - debug builds only (saves ~300KB in release)
     #if JUCE_DEBUG
@@ -58,7 +68,7 @@ PluginEditor::PluginEditor(PluginProcessor& p)
     // PHASE 3: AUTO mode toggle (content-aware pair selection)
     autoButton.setClickingTogglesState(true);
     autoButton.setColour(juce::TextButton::buttonColourId, juce::Colour(CHASSIS_MOSS).darker(0.3f));
-    autoButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(LED_MINT).withAlpha(0.3f));
+    autoButton.setColour(juce::TextButton::buttonOnColourId, juce::Colour(LED_MINT).withAlpha(0.6f));  // Increased from 0.3f for better visibility
     autoButton.setColour(juce::TextButton::textColourOffId, juce::Colour(LED_MINT).withAlpha(0.5f));
     autoButton.setColour(juce::TextButton::textColourOnId, juce::Colour(LED_MINT));
     addAndMakeVisible(autoButton);
@@ -83,104 +93,16 @@ PluginEditor::PluginEditor(PluginProcessor& p)
     dangerAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
         processorRef.getState(), "danger", dangerButton);
 
-    // PHASE 1.1: Pre-render powder coat texture for performance (95% paint time reduction)
-    regeneratePowderCoatTexture(400, 600);
-
-    // PHASE 2: Pre-render chassis corruption (burn marks, scratches, wear)
-    regenerateChassisCorruption(400, 600);
+    // Load UI asset images from embedded binary data
+    faceplateTexture_ = juce::ImageCache::getFromMemory(BinaryData::faceplate_texture_png,
+                                                        BinaryData::faceplate_texture_pngSize);
+    knobBaseImage_ = juce::ImageCache::getFromMemory(BinaryData::knob_base_png,
+                                                     BinaryData::knob_base_pngSize);
+    lcdBezelImage_ = juce::ImageCache::getFromMemory(BinaryData::lcd_bezel_png,
+                                                     BinaryData::lcd_bezel_pngSize);
 
     startTimerHz(60);  // 60 FPS for smooth knob interaction; mouth throttled to 10 FPS
     setSize(400, 600);
-}
-
-void PluginEditor::regeneratePowderCoatTexture(int width, int height)
-{
-    // Pre-render texture once instead of drawing 1200 pixels every paint call
-    cachedPowderCoatTexture_ = juce::Image(juce::Image::ARGB, width, height, true);
-    juce::Graphics g(cachedPowderCoatTexture_);
-
-    // Fine-grained noise for matte powder-coat finish (deterministic seed)
-    juce::Random random(42);
-
-    for (int i = 0; i < 1200; ++i)
-    {
-        float x = random.nextFloat() * width;
-        float y = random.nextFloat() * height;
-        float alpha = random.nextFloat() * 0.04f;  // Very subtle grain
-
-        g.setColour(juce::Colours::white.withAlpha(alpha));
-        g.fillRect(x, y, 1.0f, 1.0f);
-    }
-}
-
-void PluginEditor::regenerateChassisCorruption(int width, int height)
-{
-    // PHASE 2: Procedural burn marks, scratches, and wear (EMU hardware character)
-    // Deterministic seed 1993 (EMU Z-Plane year) for consistent appearance
-    cachedChassisCorruption_ = juce::Image(juce::Image::ARGB, width, height, true);
-    juce::Graphics g(cachedChassisCorruption_);
-    juce::Random random(1993);
-
-    // === BURN MARKS (3-5 organic scorched areas) ===
-    int burnCount = random.nextInt(juce::Range<int>(3, 6));
-    for (int i = 0; i < burnCount; ++i)
-    {
-        float x = random.nextFloat() * width;
-        float y = random.nextFloat() * height;
-        float size = 15.0f + random.nextFloat() * 25.0f;  // 15-40px
-        float alpha = 0.08f + random.nextFloat() * 0.12f;  // Subtle dark stain
-
-        // Organic irregular shape (multiple overlapping circles)
-        for (int j = 0; j < 5; ++j)
-        {
-            float offsetX = (random.nextFloat() - 0.5f) * size * 0.6f;
-            float offsetY = (random.nextFloat() - 0.5f) * size * 0.6f;
-            float subSize = size * (0.6f + random.nextFloat() * 0.4f);
-
-            g.setColour(juce::Colours::black.withAlpha(alpha * (0.5f + random.nextFloat() * 0.5f)));
-            g.fillEllipse(x + offsetX - subSize/2, y + offsetY - subSize/2, subSize, subSize);
-        }
-    }
-
-    // === SCRATCHES (8-12 thin random lines) ===
-    int scratchCount = random.nextInt(juce::Range<int>(8, 13));
-    for (int i = 0; i < scratchCount; ++i)
-    {
-        float x1 = random.nextFloat() * width;
-        float y1 = random.nextFloat() * height;
-        float angle = random.nextFloat() * juce::MathConstants<float>::twoPi;
-        float length = 20.0f + random.nextFloat() * 60.0f;  // 20-80px
-        float x2 = x1 + std::cos(angle) * length;
-        float y2 = y1 + std::sin(angle) * length;
-        float alpha = 0.05f + random.nextFloat() * 0.08f;
-
-        g.setColour(juce::Colours::black.withAlpha(alpha));
-        g.drawLine(x1, y1, x2, y2, 0.8f);  // Thin scratch
-    }
-
-    // === WEAR SPOTS (knob areas - subtle darkening) ===
-    // Top row knobs: MORPH (90, 250), INTENSITY (238, 250)
-    // Bottom knob: MIX (164, 400)
-    std::array<juce::Point<float>, 3> knobCenters = {
-        juce::Point<float>(90 + 36, 250 + 36),   // MORPH center
-        juce::Point<float>(238 + 36, 250 + 36),  // INTENSITY center
-        juce::Point<float>(164 + 36, 400 + 36)   // MIX center
-    };
-
-    for (const auto& center : knobCenters)
-    {
-        float wearRadius = 45.0f + random.nextFloat() * 10.0f;
-        g.setColour(juce::Colours::black.withAlpha(0.04f));
-        g.fillEllipse(center.x - wearRadius, center.y - wearRadius,
-                      wearRadius * 2, wearRadius * 2);
-    }
-}
-
-void PluginEditor::drawChassisCorruption(juce::Graphics& g, juce::Rectangle<float> bounds)
-{
-    // Draw cached corruption texture (called once per paint)
-    if (cachedChassisCorruption_.isValid())
-        g.drawImageAt(cachedChassisCorruption_, 0, 0);
 }
 
 void PluginEditor::drawOLEDGlowText(juce::Graphics& g, const juce::String& text,
@@ -228,17 +150,17 @@ void PluginEditor::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
 
-    // ===== CHASSIS - Dark Teal (#2F4F4F) =====
-    g.fillAll(juce::Colour(CHASSIS_MOSS));
-
-    // PHASE 1.1: Powder-coat texture overlay (cached - 95% faster)
-    if (cachedPowderCoatTexture_.isValid())
-        g.drawImageAt(cachedPowderCoatTexture_, 0, 0);
+    // ===== CHASSIS - Faceplate Texture =====
+    if (faceplateTexture_.isValid())
+    {
+        // Stretch faceplate texture to fill plugin window
+        g.drawImage(faceplateTexture_, bounds, juce::RectanglePlacement::stretchToFit);
+    }
     else
-        drawPowderCoatTexture(g, bounds); // Fallback (shouldn't happen)
-
-    // PHASE 2: Chassis corruption overlay (burn marks, scratches, wear)
-    drawChassisCorruption(g, bounds);
+    {
+        // Fallback to solid color if image fails to load
+        g.fillAll(juce::Colour(CHASSIS_MOSS));
+    }
 
     // ===== HEADER - "MUSE" =====
     {
@@ -251,25 +173,26 @@ void PluginEditor::paint(juce::Graphics& g)
 
     drawStatusLED(g);
 
-    // ===== BLACK LCD DISPLAY PANEL (HalftoneMouth renders inside) =====
+    // ===== LCD DISPLAY BEZEL (HalftoneMouth renders inside) =====
     juce::Rectangle<float> displayPanel(24, 60, 352, 150);
 
-    // Beveled panel border (inset 3D effect)
-    // Outer highlight (top/left - catching light)
-    g.setColour(juce::Colour(KNOB_INSET_LIGHT).withAlpha(0.4f));
-    g.drawRoundedRectangle(displayPanel.expanded(2.0f), 2.0f, 2.0f);
-
-    // Inner shadow (bottom/right - recessed)
-    g.setColour(juce::Colour(KNOB_INSET_DARK));
-    g.drawRoundedRectangle(displayPanel.expanded(1.0f), 2.0f, 1.5f);
-
-    // Lime green LCD background (retro hardware aesthetic)
-    g.setColour(juce::Colour(LCD_LIME));
-    g.fillRoundedRectangle(displayPanel, 2.0f);
-
-    // Deep inner shadow (recessed glass look)
-    g.setColour(juce::Colours::black.withAlpha(0.7f));
-    g.drawRoundedRectangle(displayPanel.reduced(1.0f), 2.0f, 1.5f);
+    if (lcdBezelImage_.isValid())
+    {
+        // Draw LCD bezel image, centered on display panel area
+        g.drawImage(lcdBezelImage_, displayPanel, juce::RectanglePlacement::centred);
+    }
+    else
+    {
+        // Fallback: Draw programmatic bezel
+        g.setColour(juce::Colour(KNOB_INSET_LIGHT).withAlpha(0.4f));
+        g.drawRoundedRectangle(displayPanel.expanded(2.0f), 2.0f, 2.0f);
+        g.setColour(juce::Colour(KNOB_INSET_DARK));
+        g.drawRoundedRectangle(displayPanel.expanded(1.0f), 2.0f, 1.5f);
+        g.setColour(juce::Colour(0xFFF1F4F5));
+        g.fillRoundedRectangle(displayPanel, 2.0f);
+        g.setColour(juce::Colours::black.withAlpha(0.7f));
+        g.drawRoundedRectangle(displayPanel.reduced(1.0f), 2.0f, 1.5f);
+    }
 
     // HalftoneMouth component renders the procedural dot matrix mouth here
     // (Component paints itself via renderCPU(), bounds set in resized())
@@ -340,88 +263,86 @@ void PluginEditor::drawStatusLED(juce::Graphics& g)
     }
 }
 
-void PluginEditor::drawPowderCoatTexture(juce::Graphics& g, juce::Rectangle<float> bounds)
+juce::Image PluginEditor::createCameoMaskImage(int width, int height)
 {
-    // Fine-grained noise for matte powder-coat finish
-    juce::Random random(42);  // Fixed seed for consistent pattern
+    juce::Image mask(juce::Image::ARGB, width, height, true);
+    juce::Graphics g(mask);
+    g.fillAll(juce::Colours::transparentBlack);
 
-    for (int i = 0; i < 1200; ++i)
+    auto scale = [width, height](float nx, float ny)
     {
-        float x = random.nextFloat() * bounds.getWidth();
-        float y = random.nextFloat() * bounds.getHeight();
-        float alpha = random.nextFloat() * 0.04f;  // Very subtle grain
+        return juce::Point<float>(nx * (float) width, ny * (float) height);
+    };
 
-        g.setColour(juce::Colours::white.withAlpha(alpha));
-        g.fillRect(x, y, 1.0f, 1.0f);
-    }
+    juce::Path silhouette;
+    silhouette.startNewSubPath(scale(0.30f, 0.12f));
+    silhouette.quadraticTo(scale(0.05f, 0.45f), scale(0.28f, 0.74f));
+    silhouette.quadraticTo(scale(0.18f, 0.95f), scale(0.34f, 0.96f));
+    silhouette.quadraticTo(scale(0.36f, 0.78f), scale(0.42f, 0.70f));
+    silhouette.quadraticTo(scale(0.55f, 0.72f), scale(0.60f, 0.67f));
+    silhouette.quadraticTo(scale(0.78f, 0.78f), scale(0.84f, 0.60f));
+    silhouette.quadraticTo(scale(0.75f, 0.40f), scale(0.66f, 0.34f));
+    silhouette.quadraticTo(scale(0.74f, 0.10f), scale(0.42f, 0.10f));
+    silhouette.closeSubPath();
+
+    juce::Path ponytail;
+    ponytail.addEllipse(scale(0.78f, 0.30f).x - width * 0.04f,
+                        scale(0.78f, 0.30f).y - height * 0.05f,
+                        width * 0.12f,
+                        height * 0.14f);
+    ponytail.addEllipse(scale(0.82f, 0.44f).x - width * 0.05f,
+                        scale(0.82f, 0.44f).y - height * 0.05f,
+                        width * 0.10f,
+                        height * 0.12f);
+    silhouette.addPath(ponytail);
+
+    juce::Path ribbon;
+    auto ribbonCenter = scale(0.74f, 0.24f);
+    ribbon.addEllipse(ribbonCenter.x, ribbonCenter.y + height * 0.02f,
+                      width * 0.05f, height * 0.05f);
+    silhouette.addPath(ribbon);
+
+    g.setColour(juce::Colours::white);
+    g.fillPath(silhouette);
+
+    return mask;
 }
 
 void PluginEditor::drawKnob(juce::Graphics& g, juce::Rectangle<float> bounds,
                             float value, const juce::String& label, int knobId)
 {
-    // PHASE 2: Mechanical wobble (deterministic per knob)
-    juce::Random wobbleRandom(knobId + 1993);  // Seed with knob ID + EMU year
-    float wobbleX = (wobbleRandom.nextFloat() - 0.5f) * 0.4f;
-    float wobbleY = (wobbleRandom.nextFloat() - 0.5f) * 0.4f;
-    bounds = bounds.translated(wobbleX, wobbleY);
-
     auto center = bounds.getCentre();
     float radius = bounds.getWidth() * 0.5f;
 
     // Drop shadow (subtle depth)
-    g.setColour(juce::Colours::black.withAlpha(0.5f));
-    g.fillEllipse(bounds.translated(1, 1));
+    g.setColour(juce::Colours::black.withAlpha(0.3f));
+    g.fillEllipse(bounds.translated(1, 2));
 
-    // ===== OUTER BEZEL (100% size) - Gradient + inset shadows =====
-    // CSS: linear-gradient(145deg, #325555, #2c4949)
-    // CSS: box-shadow: inset 2px 2px 4px #263e3e, inset -2px -2px 4px #385f5f
-    juce::ColourGradient gradient(
-        juce::Colour(KNOB_GRAD_LIGHT), center.x - radius * 0.6f, center.y - radius * 0.6f,
-        juce::Colour(KNOB_GRAD_DARK), center.x + radius * 0.6f, center.y + radius * 0.6f,
-        false
-    );
-    g.setGradientFill(gradient);
-    g.fillEllipse(bounds);
-
-    // Inset shadow (top-left darker, bottom-right lighter)
-    g.setColour(juce::Colour(KNOB_INSET_DARK).withAlpha(0.4f));
-    g.fillEllipse(bounds.getX() + 2, bounds.getY() + 2, bounds.getWidth() - 2, bounds.getHeight() - 2);
-
-    g.setColour(juce::Colour(KNOB_INSET_LIGHT).withAlpha(0.3f));
-    g.fillEllipse(bounds.getX(), bounds.getY(), bounds.getWidth() - 2, bounds.getHeight() - 2);
-
-    // ===== CENTER CIRCLE (80% size) - Flat chassis color =====
-    // CSS: width: 80%; background: #2F4F4F;
-    auto centerCircle = bounds.reduced(radius * 0.2f);
-    g.setColour(juce::Colour(CHASSIS_MOSS));
-    g.fillEllipse(centerCircle);
-
-    // PHASE 2: Knob wear patterns (scratches + finger darkening)
-    juce::Random wearRandom(knobId + 42);  // Deterministic wear per knob
-    for (int i = 0; i < 6; ++i)
+    // ===== KNOB BASE IMAGE =====
+    if (knobBaseImage_.isValid())
     {
-        float angle = wearRandom.nextFloat() * juce::MathConstants<float>::twoPi;
-        float startR = wearRandom.nextFloat() * radius * 0.3f;
-        float length = 8.0f + wearRandom.nextFloat() * 12.0f;
-        juce::Point<float> p1(center.x + std::cos(angle) * startR,
-                              center.y + std::sin(angle) * startR);
-        juce::Point<float> p2(p1.x + std::cos(angle) * length,
-                              p1.y + std::sin(angle) * length);
-        g.setColour(juce::Colours::black.withAlpha(0.12f));
-        g.drawLine(p1.x, p1.y, p2.x, p2.y, 0.6f);
+        // Draw knob base image, centered and scaled to fit bounds
+        g.drawImage(knobBaseImage_, bounds, juce::RectanglePlacement::centred);
+    }
+    else
+    {
+        // Fallback: Draw programmatic gradient knob
+        juce::ColourGradient gradient(
+            juce::Colour(KNOB_GRAD_LIGHT), center.x - radius * 0.6f, center.y - radius * 0.6f,
+            juce::Colour(KNOB_GRAD_DARK), center.x + radius * 0.6f, center.y + radius * 0.6f,
+            false
+        );
+        g.setGradientFill(gradient);
+        g.fillEllipse(bounds);
     }
 
-    // Finger wear darkening (center hotspot)
-    g.setColour(juce::Colours::black.withAlpha(0.06f));
-    g.fillEllipse(centerCircle.reduced(radius * 0.15f));
-
-    // ===== MINT INDICATOR LINE (2px × 12px) =====
-    // CSS: width: 2px; height: 12px; top: 6px; background: #d8f3dc;
+    // ===== INDICATOR LINE =====
+    // Rotates with knob value (-150° to +150° = 300° range)
     float angle = juce::MathConstants<float>::pi * 1.25f +
                   value * juce::MathConstants<float>::pi * 1.5f;
 
-    float lineLength = 12.0f;
-    float lineStartRadius = 6.0f;
+    float lineLength = radius * 0.35f;  // Indicator length proportional to knob size
+    float lineStartRadius = radius * 0.15f;  // Start near center
     juce::Point<float> lineStart(
         center.x + std::cos(angle - juce::MathConstants<float>::halfPi) * lineStartRadius,
         center.y + std::sin(angle - juce::MathConstants<float>::halfPi) * lineStartRadius
@@ -431,12 +352,9 @@ void PluginEditor::drawKnob(juce::Graphics& g, juce::Rectangle<float> bounds,
         center.y + std::sin(angle - juce::MathConstants<float>::halfPi) * (lineStartRadius + lineLength)
     );
 
-    // Mint glow on indicator
-    auto mint = juce::Colour(LED_MINT);
-    g.setColour(mint.withAlpha(0.3f));
-    g.drawLine(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y, 3.0f);
-    g.setColour(mint);
-    g.drawLine(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y, 2.0f);
+    // Dark indicator line (contrasts with cream knob)
+    g.setColour(juce::Colours::black.withAlpha(0.7f));
+    g.drawLine(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y, 2.5f);
 
     // ===== LABEL (Sans-serif semibold, 14px, tracking-widest) =====
     {
@@ -618,7 +536,7 @@ std::array<float, 96> PluginEditor::convertPolesToDots(const std::vector<MuseZPl
                 float dx = dotX - poleX;
                 float dy = dotY - poleY;
                 float dist = std::sqrt(dx * dx + dy * dy);
-                intensity += pole.r * std::exp(-dist * 5.0f);
+                intensity += pole.r * std::exp(-dist * 2.5f);  // Reduced from 5.0 for wider influence
             }
 
             dots[y * 16 + x] = juce::jmin(1.0f, intensity);

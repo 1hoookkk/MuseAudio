@@ -13,6 +13,8 @@ MuseZPlaneEngine::~MuseZPlaneEngine() = default;
 
 void MuseZPlaneEngine::prepare(double sampleRate, int samplesPerBlock)
 {
+    lastSampleRate_ = sampleRate;
+    lastBlockSize_ = samplesPerBlock;
     std::visit([=](auto& eng) { eng.prepare(sampleRate, samplesPerBlock); }, engine_);
 }
 
@@ -23,26 +25,31 @@ void MuseZPlaneEngine::reset()
 
 void MuseZPlaneEngine::setShapePair(int pairIndex)
 {
+    lastPairIndex_ = pairIndex;
     std::visit([=](auto& eng) { eng.setShapePair(pairIndex); }, engine_);
 }
 
 void MuseZPlaneEngine::setMorph(float morph)
 {
+    lastMorph_ = morph;
     std::visit([=](auto& eng) { eng.setMorph(morph); }, engine_);
 }
 
 void MuseZPlaneEngine::setIntensity(float intensity)
 {
+    lastIntensity_ = intensity;
     std::visit([=](auto& eng) { eng.setIntensity(intensity); }, engine_);
 }
 
 void MuseZPlaneEngine::setMix(float mix)
 {
+    lastMix_ = mix;
     std::visit([=](auto& eng) { eng.setMix(mix); }, engine_);
 }
 
 void MuseZPlaneEngine::setDrive(float drive)
 {
+    lastDrive_ = drive;
     std::visit([=](auto& eng) { eng.setDrive(drive); }, engine_);
 }
 
@@ -74,20 +81,35 @@ void MuseZPlaneEngine::setMode(Mode mode)
         engine_.emplace<FastEngine>();
     else
         engine_.emplace<AuthenticEngine>();
+
+    // CRITICAL: Re-prepare and re-apply all parameters to the new engine
+    // Without this, the audio thread hits an unprepared engine on next callback
+    prepare(lastSampleRate_, lastBlockSize_);
+    setShapePair(lastPairIndex_);
+    setMorph(lastMorph_);
+    setIntensity(lastIntensity_);
+    setMix(lastMix_);
+    setDrive(lastDrive_);
+    setDangerMode(lastDangerMode_);
+    setPerformanceMode(lastPerfMode_);
+    setSectionSaturation(lastSectionSaturation_);
 }
 
 void MuseZPlaneEngine::setPerformanceMode(emu::PerformanceMode perfMode)
 {
+    lastPerfMode_ = perfMode;
     std::visit([=](auto& eng) { eng.setPerformanceMode(perfMode); }, engine_);
 }
 
 void MuseZPlaneEngine::setSectionSaturation(float saturation)
 {
+    lastSectionSaturation_ = saturation;
     std::visit([=](auto& eng) { eng.setSectionSaturation(saturation); }, engine_);
 }
 
 void MuseZPlaneEngine::setDangerMode(bool enabled)
 {
+    lastDangerMode_ = enabled;
     std::visit([=](auto& eng) { eng.setDangerMode(enabled); }, engine_);
 }
 
@@ -326,12 +348,11 @@ void MuseZPlaneEngine::AuthenticEngine::prepare(double sampleRate, int samplesPe
     filterL.prepareToPlay(sampleRate);
     filterR.prepareToPlay(sampleRate);
 
-    // Pre-allocate dry buffer to worst-case size (prevents RT allocation on buffer size changes)
-    // Only allocate if buffer is too small (avoids reallocation on every prepare)
-    constexpr int maxBufferSize = 8192;  // Worst case: 8192 samples @ 44.1kHz = ~185ms
-    if (dryBuffer.getNumSamples() < maxBufferSize)
+    // Pre-allocate dry buffer to actual block size (prevents RT allocation during process)
+    // CRITICAL: Size must match or exceed samplesPerBlock to avoid buffer overflow
+    if (dryBuffer.getNumSamples() < samplesPerBlock)
     {
-        dryBuffer.setSize(2, maxBufferSize, false, false, true);  // Clear new allocation
+        dryBuffer.setSize(2, samplesPerBlock, false, false, true);  // Clear new allocation
     }
 
     // Set default authentic configuration
@@ -388,7 +409,7 @@ void MuseZPlaneEngine::AuthenticEngine::setIntensity(float intensity)
 
 void MuseZPlaneEngine::AuthenticEngine::setMix(float mix)
 {
-    mixAmount = mix;
+    mixAmount = juce::jlimit(0.0f, 1.0f, mix);  // Clamp to prevent phase inversion/gain > 0dB
 }
 
 void MuseZPlaneEngine::AuthenticEngine::setDrive(float drive)
@@ -428,6 +449,12 @@ void MuseZPlaneEngine::AuthenticEngine::process(float* left, float* right, int n
     // Save dry signal for wet/dry mixing
     if (mixAmount < 0.999f)
     {
+        // CRITICAL: Guard against buffer overflow if host delivers larger block without re-preparing
+        if (dryBuffer.getNumSamples() < numSamples)
+        {
+            dryBuffer.setSize(2, numSamples, false, false, true);
+        }
+
         auto* dryL = dryBuffer.getWritePointer(0);
         auto* dryR = dryBuffer.getWritePointer(1);
         std::copy(left, left + numSamples, dryL);

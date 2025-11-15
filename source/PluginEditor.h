@@ -35,23 +35,19 @@ private:
 
     void drawKnob(juce::Graphics& g, juce::Rectangle<float> bounds,
                   float value, const juce::String& label, int knobId = 0);
-    void drawPowderCoatTexture(juce::Graphics& g, juce::Rectangle<float> bounds);
-    void regeneratePowderCoatTexture(int width, int height);
-    void drawChassisCorruption(juce::Graphics& g, juce::Rectangle<float> bounds);
-    void regenerateChassisCorruption(int width, int height);
     void drawOLEDGlowText(juce::Graphics& g, const juce::String& text,
                           juce::Rectangle<int> area, float baseAlpha = 1.0f,
                           juce::Justification just = juce::Justification::centred,
                           juce::Font font = juce::Font());
     void drawStatusLED(juce::Graphics& g);
+    juce::Image createCameoMaskImage(int width, int height);
 
     PluginProcessor& processorRef;
 
-    // PHASE 1.1: Cached powder coat texture (pre-rendered for performance)
-    juce::Image cachedPowderCoatTexture_;
-
-    // PHASE 2: Cached chassis corruption (burn marks, scratches, wear)
-    juce::Image cachedChassisCorruption_;
+    // UI Asset Images (pre-loaded for performance)
+    juce::Image faceplateTexture_;      // Background chassis texture
+    juce::Image knobBaseImage_;         // Knob body (indicator drawn programmatically)
+    juce::Image lcdBezelImage_;         // LCD display bezel
 
     // HalftoneMouth - shows actual DSP vowel shapes
     HalftoneMouth halftoneMouth;

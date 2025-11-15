@@ -69,6 +69,18 @@ public:
 private:
     Mode currentMode_ = Mode::Fast;
 
+    // Cached state for mode switching (ensures new engine is prepared correctly)
+    double lastSampleRate_ = 44100.0;
+    int lastBlockSize_ = 512;
+    int lastPairIndex_ = 0;
+    float lastMorph_ = 0.5f;
+    float lastIntensity_ = 0.5f;
+    float lastMix_ = 1.0f;
+    float lastDrive_ = 0.0f;
+    bool lastDangerMode_ = false;
+    emu::PerformanceMode lastPerfMode_ = emu::PerformanceMode::Authentic;
+    float lastSectionSaturation_ = 0.0f;
+
     // Fast engine adapter (wraps emu::ZPlaneFilter_fast)
         struct FastEngine
     {
